@@ -1,0 +1,46 @@
+[package]
+name = "sqlsonnet"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "sqlsonnet"
+path = "src/sqlsonnet.rs"
+
+[[bin]]
+name = "sqlsonnet_clickhouse_proxy"
+path = "src/clickhouse_proxy.rs"
+required-features = ["clickhouse-proxy"]
+
+[dependencies]
+clap = { version = "4.5.7", features = ["derive", "env"] }
+itertools = "0.13.0"
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.117"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+jrsonnet-evaluator = { git = "https://github.com/CertainLach/jrsonnet", package = "jrsonnet-evaluator", rev = "f319c354516886c3a2952928ec3058e009ce5deb" }
+jrsonnet-stdlib = { git = "https://github.com/CertainLach/jrsonnet", package = "jrsonnet-stdlib", rev = "f319c354516886c3a2952928ec3058e009ce5deb" }
+miette = { version = "7.2.0", features = ["fancy", "syntect-highlighter"] }
+clap-stdin = "0.4.0"
+thiserror = "1.0.61"
+bat = "0.24.0"
+lazy_static = "1.4.0"
+tokio = { version = "1.38.0", features = ["full"], optional = true }
+anyhow = "1.0.86"
+axum = { version = "0.7.5", optional = true}
+pest = "2.7.10"
+pest_derive = { version = "2.7.10", features = ["grammar-extras"] }
+serde_with = "3.8.1"
+
+[features]
+clickhouse-proxy = ["dep:axum", "dep:tokio"]
+default = []
+
+[profile.release]
+incremental = true
+lto = "off"
+
+[dev-dependencies]
+anyhow = "1.0.86"
+pretty_assertions = "1.4.0"

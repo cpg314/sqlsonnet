@@ -1,0 +1,79 @@
+WHITESPACE = _{ " " | "\n" | "\t" }
+COMMENT    = _{ "--" ~ (!"\n" ~ ANY)* ~ "\n" }
+
+// Expressions
+number = @{ ASCII_DIGIT+ }
+string =  { "'" ~ (!"'" ~ ANY)* ~ "'" }
+// literal  = @{ ASCII_ALPHANUMERIC+ |  "*" }
+infix_op =  { "+" | "/" | "=" | AND | OR }
+expr     =  { term ~ (infix_op ~ term)* ~ as? }
+function = @{ identifier ~ "(" ~ exprs ~ ")" }
+term     =  {
+    "(" ~ expr ~ ")"
+  | function
+  | identifier
+  | string
+  | number
+  | "*"
+}
+
+exprs = !{ expr ~ ("," ~ expr)* }
+as    =  { AS ~ identifier }
+
+PAR_OPEN  = _{ "(" }
+PAR_CLOSE = _{ ")" }
+
+// Keywords
+// It would be nice to make these silence: https://github.com/pest-parser/pest/issues/520
+AND      = @{ ^"and" ~ WHITESPACE }
+OR       = @{ ^"or" ~ WHITESPACE }
+ASC      =  { ^"asc" }
+DESC     =  { ^"desc" }
+AS       = @{ ^"as" ~ WHITESPACE }
+FROM     = @{ ^"from" ~ WHITESPACE }
+GROUP_BY = @{ ^"group by" ~ WHITESPACE }
+ORDER_BY = @{ ^"order by" ~ WHITESPACE }
+LIMIT    = @{ ^"limit" ~ WHITESPACE }
+WHERE    = @{ ^"where" ~ WHITESPACE }
+HAVING   = @{ ^"having" ~ WHITESPACE }
+USING    = @{ ^"using" ~ WHITESPACE }
+ON       = @{ ^"on" ~ WHITESPACE }
+SELECT   = @{ ^"select" ~ WHITESPACE }
+JOIN     = @{ ^"inner "? ~ ^"join" ~ WHITESPACE }
+KEYWORD  =  { AND | OR | ASC | DESC | AS | SELECT | FROM | GROUP_BY | ORDER_BY | WHERE | LIMIT | JOIN | USING | HAVING | ON }
+
+simple_identifier = @{ (ASCII_ALPHA+ ~ (ASCII_ALPHANUMERIC | "_")*) | "*" }
+identifier        = @{ !KEYWORD ~ (simple_identifier ~ ".")? ~ simple_identifier }
+identifiers       =  { identifier ~ ("," ~ identifier)* }
+
+// Table name
+// parameterized_view = @{ identifier ~ "{" ~ "}"  }
+table_or_subquery = { (#id = identifier | (PAR_OPEN ~ #subquery = select ~ PAR_CLOSE)) ~ #as = as? }
+
+// Logical
+where  = { WHERE ~ expr }
+having = { HAVING ~ expr }
+
+// JOIN
+join      = { JOIN ~ #from = table_or_subquery ~ #as = as? ~ #cond = join_cond }
+using     = { USING ~ (PAR_OPEN ~ identifiers ~ PAR_CLOSE | identifiers) }
+on        = { ON ~ exprs }
+join_cond = { using | on }
+
+group_by = { GROUP_BY ~ exprs }
+
+ordering    = { ASC | DESC }
+order_expr  = { expr ~ ordering? }
+order_exprs = { order_expr ~ ("," ~ order_expr)* }
+order_by    = { ORDER_BY ~ order_exprs }
+
+limit = { LIMIT ~ #limit = number }
+
+fields = { exprs }
+
+select = {
+    SELECT ~ fields ~ FROM ~ table_or_subquery ~ join* ~ where? ~ group_by? ~ having? ~ order_by? ~ limit? ~ ";"?
+}
+
+query = { SOI ~ #select=select ~ EOI }
+queries = { SOI ~ #select=select ~ (";" ~ #select=select)* ~ ";"? ~ EOI }
