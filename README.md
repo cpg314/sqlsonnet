@@ -68,7 +68,3 @@ Options:
   -h, --help     Print help
   -V, --version  Print version
 ```
-
-## TODO
-
-- Allow passing `Vec<T>` as `T` everywhere.

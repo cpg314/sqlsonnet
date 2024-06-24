@@ -42,8 +42,9 @@ impl Display for Expr {
     }
 }
 
+#[serde_with::serde_as]
 #[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
-pub struct ExprList(pub Vec<Expr>);
+pub struct ExprList(#[serde_as(as = "OneOrMany<_>")] pub Vec<Expr>);
 impl ExprList {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
@@ -97,12 +98,13 @@ pub mod join {
         #[serde(flatten)]
         pub on: On,
     }
+    #[serde_with::serde_as]
     #[derive(Deserialize, Serialize, PartialEq, Eq, Debug)]
     pub enum On {
         #[serde(rename = "on")]
         On(ExprList),
         #[serde(rename = "using")]
-        Using(Vec<String>),
+        Using(#[serde_as(as = "OneOrMany<_>")] Vec<String>),
     }
 }
 
@@ -120,23 +122,9 @@ pub mod order_by {
     }
 }
 
-// pub mod where_ {
-//     use super::*;
-//     #[derive(Deserialize, Serialize, Debug, Default,PartialEq,Eq)]
-//     pub struct Conditions(pub Vec<Expr>);
-//     impl Conditions {
-//         pub fn is_empty(&self) -> bool {
-//             self.0.is_empty()
-//         }
-//     }
-//     impl std::fmt::Display for Conditions {
-//         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//             write!(f, "{}", self.0.iter().map(|e| e.to_string()).join("AND\n"))
-//         }
-//     }
-// }
 pub mod select {
     use super::*;
+    #[serde_with::serde_as]
     #[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
     pub struct Query {
@@ -151,10 +139,12 @@ pub mod select {
         pub group_by: ExprList,
         #[serde(default)]
         #[serde(skip_serializing_if = "Vec::is_empty")]
+        #[serde_as(as = "OneOrMany<_>")]
         pub joins: Vec<join::Join>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub having: Option<Expr>,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        #[serde(default, rename = "orderBy", skip_serializing_if = "Vec::is_empty")]
+        #[serde_as(as = "OneOrMany<_>")]
         pub order_by: Vec<order_by::Expr>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub limit: Option<usize>,
