@@ -1,0 +1,22 @@
+[package]
+name = "clickhouse-proxy"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "sqlsonnet_clickhouse_proxy"
+path = "src/clickhouse_proxy.rs"
+
+[dependencies]
+clap.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+tokio = { version = "1.38.0", features = ["full"] }
+axum = { version = "0.7.5" }
+tower-http = { version = "0.5.2", features = ["trace"] }
+reqwest = { version = "0.12.4", features = ["rustls-tls", "json", "gzip", "stream"], default-features = false }
+thiserror.workspace = true
+itertools.workspace = true
+
+sqlsonnet = { path = "../" }

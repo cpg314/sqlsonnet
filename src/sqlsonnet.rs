@@ -106,11 +106,7 @@ fn main() -> miette::Result<()> {
 fn main_impl() -> Result<(), Error> {
     let start = std::time::Instant::now();
     tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::builder()
-                .with_default_directive(tracing_subscriber::filter::LevelFilter::INFO.into())
-                .from_env_lossy(),
-        )
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .with_writer(std::io::stderr)
         .init();
     let args = Flags::parse();
