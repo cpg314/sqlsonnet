@@ -24,14 +24,15 @@ impl std::fmt::Display for Jsonnet {
     }
 }
 
-pub fn evaluate<T: serde::de::DeserializeOwned>(jsonnet: &str) -> Result<T, crate::error::Error> {
-    let state = jrsonnet_evaluator::State::default();
-    state.with_stdlib();
-    state.set_import_resolver(jrsonnet_evaluator::FileImportResolver::default());
-    let val = state
-        .evaluate_snippet("input.jsonnet", jsonnet)
+fn evaluate_snippet(
+    filename: &str,
+    src: &str,
+    state: &jrsonnet_evaluator::State,
+) -> Result<jrsonnet_evaluator::Val, crate::error::JsonnetError> {
+    state
+        .evaluate_snippet(filename, src)
         .map_err(|e| JsonnetError {
-            src: jsonnet.to_string(),
+            src: src.to_string(),
             reason: e.to_string(),
             span: if let jrsonnet_evaluator::error::ErrorKind::ImportSyntaxError { error, .. } =
                 e.error()
@@ -40,7 +41,21 @@ pub fn evaluate<T: serde::de::DeserializeOwned>(jsonnet: &str) -> Result<T, crat
             } else {
                 None
             },
-        })?;
+        })
+}
+
+pub fn evaluate<T: serde::de::DeserializeOwned>(jsonnet: &str) -> Result<T, crate::error::Error> {
+    let state = jrsonnet_evaluator::State::default();
+    state.with_stdlib();
+    state.set_import_resolver(jrsonnet_evaluator::FileImportResolver::default());
+
+    evaluate_snippet(
+        "utils.libsonnet",
+        include_str!("../utils.libsonnet"),
+        &state,
+    )?;
+
+    let val = evaluate_snippet("input.jsonnet", jsonnet, &state)?;
     let format = Box::new(jrsonnet_evaluator::manifest::JsonFormat::cli(3));
     let json = val.manifest(format).map_err(|e| JsonnetError {
         src: jsonnet.to_string(),
