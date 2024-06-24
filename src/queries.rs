@@ -8,6 +8,14 @@ use serde::{Deserialize, Serialize};
 #[serde_with::serde_as]
 #[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
 pub struct Queries(#[serde_as(as = "OneOrMany<_>")] Vec<Query>);
+impl Queries {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
 impl From<Vec<Query>> for Queries {
     fn from(source: Vec<Query>) -> Self {
         Self(source)

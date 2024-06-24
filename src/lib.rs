@@ -19,8 +19,8 @@ macro_rules! impl_conversions {
             pub fn from_jsonnet(input: &str) -> Result<Self, Error> {
                 jsonnet::evaluate(input)
             }
-            pub fn to_sql(&self) -> String {
-                to_sql::ToSql::to_sql_str(self)
+            pub fn to_sql(&self, compact: bool) -> String {
+                to_sql::ToSql::to_sql_str(self, compact)
             }
         }
     };

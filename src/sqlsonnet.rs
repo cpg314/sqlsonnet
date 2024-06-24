@@ -124,7 +124,7 @@ fn main_impl() -> Result<(), Error> {
             let queries = Queries::from_jsonnet(&input)?;
             // Display queries
             debug!("{:#?}", queries);
-            highlight(queries.to_sql(), Language::Sql, &args)?;
+            highlight(queries.to_sql(false), Language::Sql, &args)?;
         }
         Command::FromSql {
             input,
@@ -135,7 +135,7 @@ fn main_impl() -> Result<(), Error> {
             let queries = Queries::from_sql(&input)?;
             let has = |l| display_format.iter().any(|l2| l2 == &l);
             if has(Language::Sql) {
-                let query = queries.to_sql();
+                let query = queries.to_sql(false);
                 highlight(query, Language::Sql, &args)?;
             }
             if has(Language::Jsonnet) {

@@ -1,18 +1,31 @@
 use crate::queries::*;
 use std::fmt::{self, Write};
 
+pub(super) trait ToSql: Sized {
+    fn to_sql(&self, f: &mut IndentedPrinter<'_>) -> fmt::Result;
+    fn to_sql_str(&self, compact: bool) -> String {
+        let mut out = String::new();
+        let mut printer = IndentedPrinter::new(&mut out, compact);
+        // TODO: Handle error
+        ToSql::to_sql(self, &mut printer).unwrap();
+        out
+    }
+}
+
 // Inspired by the `indenter` crate
 pub(super) struct IndentedPrinter<'a> {
     indent: usize,
     out: &'a mut String,
     needs_indent: bool,
+    compact: bool,
 }
 impl<'a> IndentedPrinter<'a> {
-    fn new(out: &'a mut String) -> Self {
+    fn new(out: &'a mut String, compact: bool) -> Self {
         Self {
             out,
             indent: 0,
             needs_indent: true,
+            compact,
         }
     }
     fn indented(&mut self) -> IndentedPrinter<'_> {
@@ -21,6 +34,7 @@ impl<'a> IndentedPrinter<'a> {
             out: self.out,
             indent,
             needs_indent: true,
+            compact: self.compact,
         }
     }
 }
@@ -29,7 +43,11 @@ impl<'a> fmt::Write for IndentedPrinter<'a> {
         // abc\ndef
         for (i, line) in s.split('\n').enumerate() {
             if i > 0 {
-                self.out.push('\n');
+                if self.compact {
+                    self.out.push(' ');
+                } else {
+                    self.out.push('\n');
+                }
 
                 self.needs_indent = true;
             }
@@ -38,7 +56,9 @@ impl<'a> fmt::Write for IndentedPrinter<'a> {
                     continue;
                 }
                 for _ in 0..self.indent {
-                    self.out.push(' ');
+                    if !self.compact {
+                        self.out.push(' ');
+                    }
                 }
                 self.needs_indent = false;
             }
@@ -66,17 +86,6 @@ impl<T: ToSql> ToSql for Vec<T> {
             }
         }
         Ok(())
-    }
-}
-
-pub(super) trait ToSql: Sized {
-    fn to_sql(&self, f: &mut IndentedPrinter<'_>) -> fmt::Result;
-    fn to_sql_str(&self) -> String {
-        let mut out = String::new();
-        let mut printer = IndentedPrinter::new(&mut out);
-        // TODO: Handle error
-        ToSql::to_sql(self, &mut printer).unwrap();
-        out
     }
 }
 

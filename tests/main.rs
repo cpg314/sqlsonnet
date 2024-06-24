@@ -9,7 +9,7 @@ fn sql_roundtrip() -> anyhow::Result<()> {
     println!("{:?}", queries);
 
     // Queries to SQL
-    let sql = queries.to_sql();
+    let sql = queries.to_sql(false);
     println!("{}", sql);
 
     assert_eq!(sql.trim(), input.trim());
