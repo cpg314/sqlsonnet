@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use pest::iterators::Pair;
 use pest::Parser;
 
@@ -9,15 +8,29 @@ use crate::queries;
 #[grammar = "sql.pest"]
 struct SQLParser;
 
+#[allow(dead_code)]
+fn show_pair(pair: Pair<Rule>, indent: usize) {
+    for _ in 0..indent {
+        print!("  ",);
+    }
+    println!("{:?}", pair.as_rule());
+    for inner in pair.into_inner() {
+        show_pair(inner, indent + 1);
+    }
+}
+
 pub(super) trait FromParsed: Sized {
     fn parse(parsed: Pair<Rule>) -> Result<Self, SQLParseError>;
 }
 
 impl FromParsed for queries::Query {
     fn parse(parsed: Pair<Rule>) -> Result<Self, SQLParseError> {
-        assert_eq!(parsed.as_rule(), Rule::query);
-        queries::select::Query::parse(parsed.into_inner().next().unwrap())
-            .map(queries::Query::Select)
+        let query = match parsed.as_rule() {
+            Rule::select => parsed,
+            Rule::query => parsed.into_inner().next().unwrap(),
+            _ => unreachable!(),
+        };
+        FromParsed::parse(query).map(Self::Select)
     }
 }
 
@@ -27,7 +40,7 @@ impl FromParsed for queries::Queries {
         parsed
             .into_inner()
             .find_tagged("select")
-            .map(|parsed| queries::select::Query::parse(parsed).map(queries::Query::Select))
+            .map(|parsed| queries::Query::parse(parsed))
             .collect::<Result<Vec<_>, _>>()
             .map(|r| r.into())
     }
@@ -47,15 +60,66 @@ impl FromParsed for queries::order_by::Ordering {
 // A general expression
 impl FromParsed for queries::Expr {
     fn parse(parsed: Pair<Rule>) -> Result<Self, SQLParseError> {
-        assert_eq!(parsed.as_rule(), Rule::expr);
-        // Cleanup whitespace
-        let parsed = parsed
-            .as_str()
-            .replace('\n', " ")
-            .split(' ')
-            .filter(|s| !s.is_empty())
-            .join(" ");
-        Ok(Self(parsed))
+        if !parsed
+            .clone()
+            .into_inner()
+            .flatten()
+            .any(|p| p.as_rule() == Rule::select)
+        {
+            return Ok(parsed.as_str().into());
+        }
+        const SEQ: bool = true;
+        match parsed.as_rule() {
+            Rule::expr => {
+                let mut parsed = parsed.into_inner();
+                let mut term1 = Self::parse(parsed.next().unwrap())?;
+                let mut v: Vec<(queries::Operator, Box<Self>)> = vec![];
+                let mut alias = None;
+                for parsed in parsed {
+                    match parsed.as_rule() {
+                        Rule::op_term => {
+                            let mut parsed = parsed.into_inner();
+                            let op = queries::Operator(parsed.next().unwrap().as_str().into());
+                            let term = Self::parse(parsed.next().unwrap())?;
+                            if SEQ {
+                                v.push((op, Box::new(term)));
+                            } else {
+                                term1 = term1.operator(op, term);
+                            }
+                        }
+                        Rule::r#as => {
+                            let id = parsed
+                                .into_inner()
+                                .find_first_tagged("id")
+                                .unwrap()
+                                .as_str();
+                            alias = Some(id.to_string());
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                if SEQ && !v.is_empty() {
+                    term1 = Self::OperatorSeq(Box::new(term1), v)
+                }
+                if let Some(alias) = alias {
+                    term1 = Self::Aliased {
+                        expr: Box::new(term1),
+                        alias,
+                    }
+                }
+                Ok(term1)
+            }
+            Rule::term => {
+                let term = parsed.as_str();
+                let parsed = parsed.into_inner();
+                if let Some(parsed) = parsed.find_first_tagged("select") {
+                    let select = queries::Query::parse(parsed)?;
+                    return Ok(Self::Subquery(Box::new(select)));
+                }
+                Ok(term.into())
+            }
+            _ => unreachable!(),
+        }
     }
 }
 // expr ASC or expr DESC
@@ -69,7 +133,7 @@ impl FromParsed for queries::order_by::Expr {
         } else {
             Default::default()
         };
-        Ok(Self(expr, ordering))
+        Ok(Self::new(expr, ordering))
     }
 }
 
@@ -110,18 +174,18 @@ impl FromParsed for queries::from::From {
         });
         let n = parsed.next().unwrap();
 
-        Ok(match n.as_rule() {
+        let from = match n.as_rule() {
             Rule::select => {
-                let mut select: queries::select::Query = queries::select::Query::parse(n)?;
-                select.as_ = alias;
-                Self::Subquery(Box::new(select))
+                let query = queries::select::Query::parse(n)?;
+                Self::Subquery(Box::new(query))
             }
-            Rule::identifier => Self::Table(n.as_str().into()).with_alias(alias),
+            Rule::identifier => Self::Table(n.as_str().into()),
 
             _ => {
                 unreachable!()
             }
-        })
+        };
+        Ok(from.with_alias(alias))
     }
 }
 // ON a=b, c=d

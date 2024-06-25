@@ -1,15 +1,20 @@
 WHITESPACE = _{ " " | "\n" | "\t" }
-COMMENT    = _{ "--" ~ (!"\n" ~ ANY)* ~ "\n" }
+COMMENT    = _{ "--" ~ (!"\n" ~ ANY)* ~ ("\n" | EOI) }
 
 // Expressions
 number = @{ ASCII_DIGIT+ }
 string =  { "'" ~ (!"'" ~ ANY)* ~ "'" }
 // literal  = @{ ASCII_ALPHANUMERIC+ |  "*" }
-infix_op =  { "+" | "-" | "*" | "/" | "=" | AND | OR }
-expr     =  { term ~ (!KEYWORD ~ infix_op ~ term)* ~ as? }
-function = @{ identifier ~ "(" ~ exprs ~ ")" }
+infix_op =  { "+" | "-" | "*" | "/" | "=" | AND | OR | IN }
+op_term  =  { !KEYWORD ~ infix_op ~ term }
+expr     =  { term ~ op_term* ~ as? }
+function = ${ identifier ~ "(" ~ exprs ~ ")" }
 term     =  {
-    "(" ~ expr ~ ")"
+    (PAR_OPEN ~ expr ~ PAR_CLOSE)
+  | (PAR_OPEN ~ #select = select ~ PAR_CLOSE)
+  | (identifier ~ "[" ~ number ~ "]")
+  | (simple_identifier ~ "." ~ number)
+  | "-" ~ term
   | function
   | identifier
   | string
@@ -18,29 +23,30 @@ term     =  {
 }
 
 exprs = !{ expr ~ ("," ~ expr)* }
-as    = ${ AS ~ WHITESPACE+ ~ identifier }
+as    = ${ AS ~ WHITESPACE+ ~ #id = identifier }
 
 PAR_OPEN  = _{ "(" }
 PAR_CLOSE = _{ ")" }
 
 // Keywords
-// It would be nice to make these silence: https://github.com/pest-parser/pest/issues/520
-AND      = @{ ^"and" }
-OR       = @{ ^"or" }
-ASC      =  { ^"asc" }
-DESC     =  { ^"desc" }
-AS       = @{ ^"as" }
-FROM     = @{ ^"from" }
-GROUP_BY = @{ ^"group by" }
-ORDER_BY = @{ ^"order by" }
-LIMIT    = @{ ^"limit" }
-WHERE    = @{ ^"where" }
-HAVING   = @{ ^"having" }
-USING    = @{ ^"using" }
-ON       = @{ ^"on" }
-SELECT   = @{ ^"select" }
-JOIN     = @{ ^"inner "? ~ ^"join" }
-KEYWORD  =  { ASC | DESC | AS | SELECT | FROM | GROUP_BY | ORDER_BY | WHERE | LIMIT | JOIN | USING | HAVING | ON }
+// TODO: silent
+AND      = { ^"and" }
+OR       = { ^"or" }
+ASC      = { ^"asc" }
+DESC     = { ^"desc" }
+AS       = { ^"as" }
+IN       = { ^"in" }
+FROM     = { ^"from" }
+GROUP_BY = { ^"group by" }
+ORDER_BY = { ^"order by" }
+LIMIT    = { ^"limit" }
+WHERE    = { ^"where" }
+HAVING   = { ^"having" }
+USING    = { ^"using" }
+ON       = { ^"on" }
+SELECT   = { ^"select" }
+JOIN     = { ^"inner "? ~ ^"join" }
+KEYWORD  = { ASC | DESC | AS | SELECT | FROM | GROUP_BY | ORDER_BY | WHERE | LIMIT | JOIN | USING | HAVING | ON }
 
 simple_identifier = @{ (ASCII_ALPHA+ ~ (ASCII_ALPHANUMERIC | "_")*) | "*" }
 identifier        = @{ !KEYWORD ~ (simple_identifier ~ ".")? ~ simple_identifier }
@@ -60,7 +66,7 @@ using     = { USING ~ (PAR_OPEN ~ identifiers ~ PAR_CLOSE | identifiers) }
 on        = { ON ~ exprs }
 join_cond = { using | on }
 
-group_by = { GROUP_BY ~ exprs }
+group_by = { GROUP_BY ~ (#exprs = exprs | PAR_OPEN ~ #exprs = exprs ~ PAR_CLOSE) }
 
 ordering    = { ASC | DESC }
 order_expr  = { expr ~ ordering? }

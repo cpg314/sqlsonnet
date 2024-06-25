@@ -1,12 +1,13 @@
 #![allow(unstable_name_collisions)]
+use itertools::Itertools;
 use serde_with::OneOrMany;
-use std::fmt::{self, Display};
 
 use serde::{Deserialize, Serialize};
 
 /// A set of SQL queries
 #[serde_with::serde_as]
 #[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Queries(#[serde_as(as = "OneOrMany<_>")] Vec<Query>);
 impl Queries {
     pub fn len(&self) -> usize {
@@ -42,26 +43,61 @@ impl<'a> IntoIterator for &'a Queries {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
-pub struct Expr(pub String);
-impl Display for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
+pub use expr::*;
+pub mod expr {
+    use super::*;
+    #[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
+    pub struct Operator(pub String);
 
-#[serde_with::serde_as]
-#[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
-pub struct ExprList(#[serde_as(as = "OneOrMany<_>")] pub Vec<Expr>);
-impl ExprList {
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+    #[serde_with::serde_as]
+    #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+    #[serde(deny_unknown_fields, untagged)]
+    pub enum Expr {
+        Raw(String),
+        // [expr, op, [expr]]
+        Operator(Box<Expr>, Operator, Box<Expr>),
+        // [expr, [[op, expr], ...]]
+        OperatorSeq(Box<Expr>, Vec<(Operator, Box<Expr>)>),
+        Subquery(Box<Query>),
+        Aliased { expr: Box<Expr>, alias: String },
+    }
+    impl From<&str> for Expr {
+        fn from(source: &str) -> Self {
+            Self::Raw(
+                source
+                    .replace('\n', " ")
+                    .split(' ')
+                    .filter(|s| !s.is_empty())
+                    .join(" "),
+            )
+        }
+    }
+
+    impl Expr {
+        pub fn operator(self, op: Operator, right: Expr) -> Self {
+            Self::Operator(Box::new(self), op, Box::new(right))
+        }
+    }
+    impl Default for Expr {
+        fn default() -> Self {
+            Self::Raw(Default::default())
+        }
+    }
+
+    #[serde_with::serde_as]
+    #[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
+    #[serde(deny_unknown_fields)]
+    pub struct ExprList(#[serde_as(as = "OneOrMany<_>")] pub Vec<Expr>);
+    impl ExprList {
+        pub fn is_empty(&self) -> bool {
+            self.0.is_empty()
+        }
     }
 }
 
 /// An SQL query
 #[derive(Deserialize, Serialize, PartialEq, Eq, Debug)]
-#[serde(rename_all = "lowercase")]
+#[serde(deny_unknown_fields, rename_all = "lowercase")]
 pub enum Query {
     Select(select::Query),
 }
@@ -69,29 +105,35 @@ pub enum Query {
 pub mod from {
     use super::*;
     #[derive(Deserialize, Serialize, Default, PartialEq, Eq, Debug)]
-    #[serde(untagged)]
+    #[serde(deny_unknown_fields, untagged)]
     pub enum From {
         Table(String),
-        TableAlias {
-            name: String,
+        AliasedTable {
+            table: String,
+            #[serde(rename = "as")]
             alias: String,
         },
         Subquery(Box<select::Query>),
+        AliasedSubquery {
+            #[serde(flatten)]
+            query: Box<select::Query>,
+            #[serde(rename = "as")]
+            alias: String,
+        },
         #[default]
         Unset,
     }
     impl From {
         pub fn with_alias(self, alias: Option<String>) -> Self {
-            match (&self, alias) {
-                (Self::Table(name), Some(alias)) => Self::TableAlias {
-                    name: name.clone(),
-                    alias,
-                },
-                (Self::TableAlias { name, .. }, Some(alias)) => Self::TableAlias {
-                    name: name.clone(),
-                    alias,
-                },
-                _ => self,
+            let Some(alias) = alias else {
+                return self;
+            };
+            match self {
+                Self::Table(table) => Self::AliasedTable { table, alias },
+                Self::AliasedTable { table, .. } => Self::AliasedTable { table, alias },
+                Self::AliasedSubquery { query, .. } => Self::AliasedSubquery { query, alias },
+                Self::Subquery(query) => Self::AliasedSubquery { query, alias },
+                Self::Unset => From::Unset,
             }
         }
     }
@@ -108,6 +150,7 @@ pub mod join {
     }
     #[serde_with::serde_as]
     #[derive(Deserialize, Serialize, PartialEq, Eq, Debug)]
+    #[serde(deny_unknown_fields)]
     pub enum On {
         #[serde(rename = "on")]
         On(ExprList),
@@ -118,8 +161,22 @@ pub mod join {
 
 pub mod order_by {
     use super::*;
-    #[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
-    pub struct Expr(pub super::Expr, pub Ordering);
+
+    #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+    #[serde(deny_unknown_fields, untagged)]
+    pub enum Expr {
+        Asc(super::Expr),
+        Ordering(super::Expr, Ordering),
+    }
+    impl Expr {
+        pub fn new(e: super::Expr, ordering: Ordering) -> Self {
+            if ordering == Ordering::Asc {
+                Self::Asc(e)
+            } else {
+                Self::Ordering(e, ordering)
+            }
+        }
+    }
     #[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
     pub enum Ordering {
         #[default]
@@ -156,8 +213,5 @@ pub mod select {
         pub order_by: Vec<order_by::Expr>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub limit: Option<usize>,
-        #[serde(default, rename = "as")]
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub as_: Option<String>,
     }
 }

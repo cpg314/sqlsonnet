@@ -94,9 +94,39 @@ impl ToSql for String {
         write!(f, "{}", self)
     }
 }
+
+impl ToSql for Operator {
+    fn to_sql(&self, f: &mut IndentedPrinter<'_>) -> fmt::Result {
+        write!(f, " {} ", self.0)
+    }
+}
 impl ToSql for Expr {
     fn to_sql(&self, f: &mut IndentedPrinter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        match self {
+            Expr::Raw(s) => write!(f, "{}", s),
+            Expr::Aliased { expr, alias } => {
+                expr.to_sql(f)?;
+                write!(f, " AS {}", alias)
+            }
+            Expr::OperatorSeq(q1, v) => {
+                q1.to_sql(f)?;
+                for (op, q) in v {
+                    op.to_sql(f)?;
+                    q.to_sql(f)?;
+                }
+                Ok(())
+            }
+            Expr::Operator(q1, op, q2) => {
+                q1.to_sql(f)?;
+                op.to_sql(f)?;
+                q2.to_sql(f)
+            }
+            Expr::Subquery(s) => {
+                write!(f, "(")?;
+                ToSql::to_sql(s.as_ref(), f)?;
+                write!(f, ")")
+            }
+        }
     }
 }
 
@@ -118,14 +148,18 @@ impl ToSql for from::From {
         match self {
             Self::Unset => unreachable!(),
             Self::Table(s) => s.to_sql(f),
-            Self::TableAlias { name, alias } => write!(f, "{} AS {}", name, alias),
+            Self::AliasedTable { table, alias } => {
+                write!(f, "{} AS {}", table, alias)
+            }
+            Self::AliasedSubquery { query, alias } => {
+                writeln!(f, "(")?;
+                ToSql::to_sql(query.as_ref(), &mut f.indented())?;
+                write!(f, ") AS {}", alias)
+            }
             Self::Subquery(q) => {
                 writeln!(f, "(")?;
-                q.to_sql(&mut f.indented())?;
+                ToSql::to_sql(q.as_ref(), &mut f.indented())?;
                 write!(f, ")")?;
-                if let Some(as_) = &q.as_ {
-                    write!(f, " AS {}", as_)?;
-                }
                 Ok(())
             }
         }
@@ -157,21 +191,22 @@ impl ToSql for join::Join {
 
 impl ToSql for order_by::Ordering {
     fn to_sql(&self, f: &mut IndentedPrinter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Asc => "ASC",
-                Self::Desc => "DESC",
-            }
-        )
+        if *self != Self::Asc {
+            write!(f, " DESC",)?;
+        }
+        Ok(())
     }
 }
 impl ToSql for order_by::Expr {
     fn to_sql(&self, f: &mut IndentedPrinter) -> fmt::Result {
-        self.0.to_sql(f)?;
-        write!(f, " ")?;
-        self.1.to_sql(f)
+        match self {
+            order_by::Expr::Asc(e) => e.to_sql(f),
+            order_by::Expr::Ordering(e, ordering) => {
+                e.to_sql(f)?;
+                ordering.to_sql(f)?;
+                Ok(())
+            }
+        }
     }
 }
 
