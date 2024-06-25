@@ -105,10 +105,7 @@ fn main() -> miette::Result<()> {
 }
 fn main_impl() -> Result<(), Error> {
     let start = std::time::Instant::now();
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .with_writer(std::io::stderr)
-        .init();
+    sqlsonnet::setup_logging();
     let args = Flags::parse();
 
     match &args.command {

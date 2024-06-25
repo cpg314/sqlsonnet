@@ -28,3 +28,14 @@ macro_rules! impl_conversions {
 
 impl_conversions!(Queries, sql_parse::Rule::queries);
 impl_conversions!(Query, sql_parse::Rule::query);
+
+pub fn setup_logging() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing_subscriber::filter::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .with_writer(std::io::stderr)
+        .init()
+}

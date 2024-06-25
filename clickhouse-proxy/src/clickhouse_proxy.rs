@@ -79,10 +79,7 @@ impl State {
 
 async fn main_impl() -> anyhow::Result<()> {
     let args = Flags::parse();
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .with_writer(std::io::stderr)
-        .init();
+    sqlsonnet::setup_logging();
 
     let app = axum::Router::new()
         .route("/", axum::routing::post(handle_query))
@@ -130,7 +127,9 @@ async fn main_impl() -> anyhow::Result<()> {
                 ),
         );
 
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", args.port)).await?;
+    let address = format!("0.0.0.0:{}", args.port);
+    info!("Serving on {}", address);
+    let listener = tokio::net::TcpListener::bind(address).await?;
     axum::serve(listener, app).await?;
     Ok(())
 }
