@@ -29,10 +29,9 @@ impl<'a> IndentedPrinter<'a> {
         }
     }
     fn indented(&mut self) -> IndentedPrinter<'_> {
-        let indent = self.indent + 2;
         IndentedPrinter {
             out: self.out,
-            indent,
+            indent: self.indent + 2,
             needs_indent: true,
             compact: self.compact,
         }
@@ -48,7 +47,6 @@ impl<'a> fmt::Write for IndentedPrinter<'a> {
                 } else {
                     self.out.push('\n');
                 }
-
                 self.needs_indent = true;
             }
             if self.needs_indent {
@@ -122,8 +120,8 @@ impl ToSql for Expr {
                 q2.to_sql(f)
             }
             Expr::Subquery(s) => {
-                write!(f, "(")?;
-                ToSql::to_sql(s.as_ref(), f)?;
+                writeln!(f, "(")?;
+                ToSql::to_sql(s.as_ref(), &mut f.indented())?;
                 write!(f, ")")
             }
         }
@@ -151,15 +149,13 @@ impl ToSql for from::From {
             Self::AliasedTable { table, alias } => {
                 write!(f, "{} AS {}", table, alias)
             }
-            Self::AliasedSubquery { query, alias } => {
+            Self::Subquery { query, alias } => {
                 writeln!(f, "(")?;
                 ToSql::to_sql(query.as_ref(), &mut f.indented())?;
-                write!(f, ") AS {}", alias)
-            }
-            Self::Subquery(q) => {
-                writeln!(f, "(")?;
-                ToSql::to_sql(q.as_ref(), &mut f.indented())?;
                 write!(f, ")")?;
+                if let Some(alias) = alias {
+                    write!(f, " AS {}", alias)?;
+                }
                 Ok(())
             }
         }
@@ -238,8 +234,8 @@ impl ToSql for select::Query {
             self.order_by.to_sql(&mut f.indented())?;
         }
         if let Some(limit) = &self.limit {
-            writeln!(f, "\nLIMIT {}", limit)?;
+            write!(f, "\nLIMIT {}", limit)?;
         }
-        Ok(())
+        writeln!(f)
     }
 }

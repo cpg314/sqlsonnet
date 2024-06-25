@@ -14,14 +14,18 @@ FROM (
 JOIN (
   SELECT
     *
-  FROM table3) AS subquery2_alias
+  FROM table3
+  WHERE
+    e IN (SELECT
+      id
+    FROM table8)) AS subquery2_alias
   USING
     a,
     b
 JOIN db1.table5 AS table5_alias
   ON
     a = b
-JOIN table7 AS table7_alias
+JOIN table7
   USING
     c
 WHERE
@@ -36,3 +40,4 @@ ORDER BY
   b DESC
 LIMIT 100
 ;
+

@@ -113,12 +113,11 @@ pub mod from {
             #[serde(rename = "as")]
             alias: String,
         },
-        Subquery(Box<select::Query>),
-        AliasedSubquery {
+        Subquery {
             #[serde(flatten)]
             query: Box<select::Query>,
             #[serde(rename = "as")]
-            alias: String,
+            alias: Option<String>,
         },
         #[default]
         Unset,
@@ -131,8 +130,10 @@ pub mod from {
             match self {
                 Self::Table(table) => Self::AliasedTable { table, alias },
                 Self::AliasedTable { table, .. } => Self::AliasedTable { table, alias },
-                Self::AliasedSubquery { query, .. } => Self::AliasedSubquery { query, alias },
-                Self::Subquery(query) => Self::AliasedSubquery { query, alias },
+                Self::Subquery { query, .. } => Self::Subquery {
+                    query,
+                    alias: Some(alias),
+                },
                 Self::Unset => From::Unset,
             }
         }

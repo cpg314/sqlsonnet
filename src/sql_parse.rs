@@ -39,7 +39,7 @@ impl FromParsed for queries::Queries {
         assert_eq!(parsed.as_rule(), Rule::queries);
         parsed
             .into_inner()
-            .find_tagged("select")
+            .filter(|p| p.as_rule() == Rule::select)
             .map(|parsed| queries::Query::parse(parsed))
             .collect::<Result<Vec<_>, _>>()
             .map(|r| r.into())
@@ -68,7 +68,7 @@ impl FromParsed for queries::Expr {
         {
             return Ok(parsed.as_str().into());
         }
-        const SEQ: bool = true;
+        const SEQ: bool = false;
         match parsed.as_rule() {
             Rule::expr => {
                 let mut parsed = parsed.into_inner();
@@ -177,15 +177,18 @@ impl FromParsed for queries::from::From {
         let from = match n.as_rule() {
             Rule::select => {
                 let query = queries::select::Query::parse(n)?;
-                Self::Subquery(Box::new(query))
+                Self::Subquery {
+                    query: Box::new(query),
+                    alias,
+                }
             }
-            Rule::identifier => Self::Table(n.as_str().into()),
+            Rule::identifier => Self::Table(n.as_str().into()).with_alias(alias),
 
             _ => {
                 unreachable!()
             }
         };
-        Ok(from.with_alias(alias))
+        Ok(from)
     }
 }
 // ON a=b, c=d
