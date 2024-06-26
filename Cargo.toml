@@ -21,8 +21,8 @@ tracing-subscriber.workspace = true
 clap.workspace = true
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.117"
-jrsonnet-evaluator = { git = "https://github.com/CertainLach/jrsonnet", package = "jrsonnet-evaluator", rev = "f319c354516886c3a2952928ec3058e009ce5deb" }
-jrsonnet-stdlib = { git = "https://github.com/CertainLach/jrsonnet", package = "jrsonnet-stdlib", rev = "f319c354516886c3a2952928ec3058e009ce5deb" }
+jrsonnet-evaluator = { git = "https://github.com/CertainLach/jrsonnet", package = "jrsonnet-evaluator", rev = "f319c354516886c3a2952928ec3058e009ce5deb", features = ["exp-null-coaelse"] }
+jrsonnet-stdlib = { git = "https://github.com/CertainLach/jrsonnet", package = "jrsonnet-stdlib", rev = "f319c354516886c3a2952928ec3058e009ce5deb", features = ["exp-null-coaelse"] }
 miette = { version = "7.2.0", features = ["fancy", "syntect-highlighter"] }
 clap-stdin = "0.4.0"
 thiserror.workspace = true
@@ -33,6 +33,7 @@ pest = "2.7.10"
 pest_derive = { version = "2.7.10", features = ["grammar-extras"] }
 serde_with = "3.8.1"
 itertools.workspace = true
+pretty_assertions = "1.4.0"
 
 [workspace]
 members = ["clickhouse-proxy"]
@@ -43,4 +44,3 @@ lto = "off"
 
 [dev-dependencies]
 anyhow.workspace = true
-pretty_assertions = "1.4.0"
