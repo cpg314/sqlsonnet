@@ -1,15 +1,20 @@
 // Utilities embedded in sqlsonnet. Use with
 // local u = import 'utils.libsonnet';
 {
+
+  op(operator, l): if std.length(l) == 1 then l[0] else [l[0], operator, self.and(l[1:])],
+  select(x): {select: x},
   // Operators
-  and(l): std.join(' AND ', l),
-  or(l): std.join(' OR ', l),
-  eq(a, b): std.join(' ', [a, '=', b]),
-  ge(a, b): std.join(' ', [a, '>', b]),
-  le(a, b): std.join(' ', [a, '<', b]),
-  geq(a, b): std.join(' ', [a, '>=', b]),
-  leq(a, b): std.join(' ', [a, '<=', b]),
-  in_(a, b): std.join(' ', [a, 'IN', b]),
+  and(l): self.op("AND", l),
+  or(l): self.op("OR", l),
+  string(s): "'" + s + "'",
+  eq(a, b): [a, "=", b],
+  ge(a, b): [a, ">=", b],
+  le(a, b): [a, "<=", b],
+  gt(a, b): [a, ">", b],
+  lt(a, b): [a, "<", b],
+  leq(a, b): [a, "<=", b],
+  in_(a, b): [a, "IN", b],
   // expr AS as
   as(expr, as): { expr: expr, alias: as },
   // Functions

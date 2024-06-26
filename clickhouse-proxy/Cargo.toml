@@ -10,7 +10,6 @@ path = "src/clickhouse_proxy.rs"
 [dependencies]
 clap.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
 anyhow.workspace = true
 tokio = { version = "1.38.0", features = ["full"] }
 axum = { version = "0.7.5" }
