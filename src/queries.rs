@@ -1,14 +1,12 @@
 #![allow(unstable_name_collisions)]
 use itertools::Itertools;
-use serde_with::OneOrMany;
 
 use serde::{Deserialize, Serialize};
 
 /// A set of SQL queries
-#[serde_with::serde_as]
 #[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub struct Queries(#[serde_as(as = "OneOrMany<_>")] Vec<Query>);
+pub struct Queries(Vec<Query>);
 impl Queries {
     pub fn len(&self) -> usize {
         self.0.len()
@@ -48,12 +46,31 @@ pub mod expr {
     use super::*;
     #[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
     pub struct Operator(pub String);
+    impl Operator {
+        pub fn linebreak(&self) -> bool {
+            ["and", "or"].contains(&self.0.to_lowercase().as_str())
+        }
+    }
+    #[derive(Deserialize, Serialize, Debug)]
+    pub struct FloatEq(f64);
+    impl std::cmp::Eq for FloatEq {}
+    impl std::fmt::Display for FloatEq {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.0)
+        }
+    }
+    impl std::cmp::PartialEq for FloatEq {
+        fn eq(&self, other: &Self) -> bool {
+            self.0.to_le_bytes() == other.0.to_le_bytes()
+        }
+    }
 
-    #[serde_with::serde_as]
     #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
     #[serde(deny_unknown_fields, untagged)]
     pub enum Expr {
         Raw(String),
+        RawInteger(i64),
+        RawFloat(FloatEq),
         // [expr, op, [expr]]
         Operator(Box<Expr>, Operator, Box<Expr>),
         // [expr, [[op, expr], ...]]
@@ -84,10 +101,9 @@ pub mod expr {
         }
     }
 
-    #[serde_with::serde_as]
     #[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
-    pub struct ExprList(#[serde_as(as = "OneOrMany<_>")] pub Vec<Expr>);
+    pub struct ExprList(pub Vec<Expr>);
     impl ExprList {
         pub fn is_empty(&self) -> bool {
             self.0.is_empty()
@@ -156,7 +172,7 @@ pub mod join {
         #[serde(rename = "on")]
         On(ExprList),
         #[serde(rename = "using")]
-        Using(#[serde_as(as = "OneOrMany<_>")] Vec<String>),
+        Using(Vec<String>),
     }
 }
 
@@ -190,7 +206,6 @@ pub mod order_by {
 
 pub mod select {
     use super::*;
-    #[serde_with::serde_as]
     #[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
     pub struct Query {
@@ -205,12 +220,10 @@ pub mod select {
         pub group_by: ExprList,
         #[serde(default)]
         #[serde(skip_serializing_if = "Vec::is_empty")]
-        #[serde_as(as = "OneOrMany<_>")]
         pub joins: Vec<join::Join>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub having: Option<Expr>,
         #[serde(default, rename = "orderBy", skip_serializing_if = "Vec::is_empty")]
-        #[serde_as(as = "OneOrMany<_>")]
         pub order_by: Vec<order_by::Expr>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub limit: Option<usize>,

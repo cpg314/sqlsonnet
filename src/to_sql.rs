@@ -70,7 +70,7 @@ impl ToSql for Queries {
     fn to_sql(&self, f: &mut IndentedPrinter<'_>) -> fmt::Result {
         for q in self {
             ToSql::to_sql(q, f)?;
-            write!(f, ";")?;
+            writeln!(f, ";")?;
         }
         Ok(())
     }
@@ -95,13 +95,15 @@ impl ToSql for String {
 
 impl ToSql for Operator {
     fn to_sql(&self, f: &mut IndentedPrinter<'_>) -> fmt::Result {
-        write!(f, " {} ", self.0)
+        write!(f, "{}", self.0)
     }
 }
 impl ToSql for Expr {
     fn to_sql(&self, f: &mut IndentedPrinter<'_>) -> fmt::Result {
         match self {
             Expr::Raw(s) => write!(f, "{}", s),
+            Expr::RawInteger(s) => write!(f, "{}", s),
+            Expr::RawFloat(s) => write!(f, "{}", s),
             Expr::Aliased { expr, alias } => {
                 expr.to_sql(f)?;
                 write!(f, " AS {}", alias)
@@ -116,7 +118,13 @@ impl ToSql for Expr {
             }
             Expr::Operator(q1, op, q2) => {
                 q1.to_sql(f)?;
+                if op.linebreak() {
+                    writeln!(f)?;
+                } else {
+                    write!(f, " ")?;
+                }
                 op.to_sql(f)?;
+                write!(f, " ")?;
                 q2.to_sql(f)
             }
             Expr::Subquery(s) => {

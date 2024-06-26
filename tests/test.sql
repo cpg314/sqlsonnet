@@ -10,15 +10,19 @@ SELECT
 FROM (
   SELECT
     id
-  FROM table1) AS subquery1_alias
+  FROM table1
+) AS subquery1_alias
 JOIN (
   SELECT
     *
   FROM table3
   WHERE
-    e IN (SELECT
-      id
-    FROM table8)) AS subquery2_alias
+    e IN (
+      SELECT
+        id
+      FROM table8
+    )
+) AS subquery2_alias
   USING
     a,
     b
@@ -40,4 +44,3 @@ ORDER BY
   b DESC
 LIMIT 100
 ;
-
