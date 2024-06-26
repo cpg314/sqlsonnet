@@ -1,7 +1,9 @@
+use crate::error::JsonnetError;
+use jrsonnet_evaluator::parser::SourcePath;
+use jrsonnet_gcmodule::Trace;
 use jrsonnet_stdlib::StateExt;
 use serde::Serialize;
-
-use crate::error::JsonnetError;
+use std::path::Path;
 
 /// Jsonnet code that implemens [`std::fmt::Display`]
 pub struct Jsonnet(serde_json::Value);
@@ -33,17 +35,62 @@ fn evaluate_snippet(
         .map_err(|e| JsonnetError::from(Some(filename), src, e))
 }
 
+mod resolver {
+    // TODO: There might be an easier way of doing this...
+    use super::*;
+    const UTILS_FILENAME: &str = "utils.libsonnet";
+    #[derive(Trace)]
+    pub struct Resolver {
+        inner: jrsonnet_evaluator::FileImportResolver,
+        utils: Vec<u8>,
+    }
+    impl Resolver {
+        pub fn new() -> Self {
+            Self {
+                inner: Default::default(),
+                utils: include_bytes!("../utils.libsonnet").into(),
+            }
+        }
+    }
+    impl jrsonnet_evaluator::ImportResolver for Resolver {
+        fn resolve_from(
+            &self,
+            from: &SourcePath,
+            path: &str,
+        ) -> jrsonnet_evaluator::Result<SourcePath> {
+            if path == UTILS_FILENAME {
+                return Ok(SourcePath::new(jrsonnet_parser::SourceFile::new(
+                    UTILS_FILENAME.into(),
+                )));
+            }
+            self.inner.resolve_from(from, path)
+        }
+        fn resolve_from_default(&self, path: &str) -> jrsonnet_evaluator::Result<SourcePath> {
+            self.inner.resolve_from_default(path)
+        }
+        fn resolve(&self, path: &Path) -> jrsonnet_evaluator::Result<SourcePath> {
+            self.inner.resolve(path)
+        }
+        fn load_file_contents(&self, resolved: &SourcePath) -> jrsonnet_evaluator::Result<Vec<u8>> {
+            if resolved
+                .path()
+                .map_or(false, |p| p == Path::new(UTILS_FILENAME))
+            {
+                return Ok(self.utils.clone());
+            }
+            self.inner.load_file_contents(resolved)
+        }
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+    }
+}
+
 /// Evaluate Jsonnet into JSON
 pub fn evaluate(jsonnet: &str) -> Result<String, crate::error::JsonnetError> {
     let state = jrsonnet_evaluator::State::default();
     state.with_stdlib();
-    state.set_import_resolver(jrsonnet_evaluator::FileImportResolver::default());
-
-    evaluate_snippet(
-        "utils.libsonnet",
-        include_str!("../utils.libsonnet"),
-        &state,
-    )?;
+    state.set_import_resolver(resolver::Resolver::new());
 
     let val = evaluate_snippet("input.jsonnet", jsonnet, &state)?;
     let format = Box::new(jrsonnet_evaluator::manifest::JsonFormat::cli(3));

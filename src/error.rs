@@ -46,7 +46,7 @@ impl JsonnetError {
 }
 
 #[derive(thiserror::Error, Diagnostic, Debug)]
-#[error("Failed to deserialize JSON: {reason}")]
+#[error("Failed to interpret query from JSON: {reason}")]
 pub struct JsonError {
     pub reason: String,
     #[source_code]
