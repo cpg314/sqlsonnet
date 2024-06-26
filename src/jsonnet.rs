@@ -1,8 +1,7 @@
 use jrsonnet_stdlib::StateExt;
 use serde::Serialize;
-use tracing::*;
 
-use crate::error::{JsonError, JsonnetError};
+use crate::error::JsonnetError;
 
 /// Jsonnet code that implemens [`std::fmt::Display`]
 pub struct Jsonnet(serde_json::Value);
@@ -31,20 +30,11 @@ fn evaluate_snippet(
 ) -> Result<jrsonnet_evaluator::Val, crate::error::JsonnetError> {
     state
         .evaluate_snippet(filename, src)
-        .map_err(|e| JsonnetError {
-            src: src.to_string(),
-            reason: e.to_string(),
-            span: if let jrsonnet_evaluator::error::ErrorKind::ImportSyntaxError { error, .. } =
-                e.error()
-            {
-                Some(miette::SourceSpan::new(error.location.offset.into(), 1))
-            } else {
-                None
-            },
-        })
+        .map_err(|e| JsonnetError::from(Some(filename), src, e))
 }
 
-pub fn evaluate<T: serde::de::DeserializeOwned>(jsonnet: &str) -> Result<T, crate::error::Error> {
+/// Evaluate Jsonnet into JSON
+pub fn evaluate(jsonnet: &str) -> Result<String, crate::error::JsonnetError> {
     let state = jrsonnet_evaluator::State::default();
     state.with_stdlib();
     state.set_import_resolver(jrsonnet_evaluator::FileImportResolver::default());
@@ -57,18 +47,8 @@ pub fn evaluate<T: serde::de::DeserializeOwned>(jsonnet: &str) -> Result<T, crat
 
     let val = evaluate_snippet("input.jsonnet", jsonnet, &state)?;
     let format = Box::new(jrsonnet_evaluator::manifest::JsonFormat::cli(3));
-    let json = val.manifest(format).map_err(|e| JsonnetError {
-        src: jsonnet.to_string(),
-        reason: e.to_string(),
-        span: None,
-    })?;
-    debug!(json);
-    // JSON to queries
-    Ok(serde_json::from_str::<T>(&json).map_err(|e| JsonError {
-        reason: e.to_string(),
-        src: json.clone(),
-        span: miette::SourceOffset::from_location(&json, e.line(), e.column()),
-    })?)
+    val.manifest(format)
+        .map_err(|e| JsonnetError::from(None, jsonnet, e))
 }
 
 #[derive(Default)]

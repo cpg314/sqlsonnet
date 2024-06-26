@@ -281,7 +281,7 @@ pub(super) fn query_from_sql<T: FromParsed>(sql: &str, rule: Rule) -> Result<T, 
             };
             SQLParseError {
                 reason: e.variant.message().into(),
-                src: sql.into(),
+                src: miette::NamedSource::new("source.sql", sql.into()),
                 span: location.into(),
             }
         })?

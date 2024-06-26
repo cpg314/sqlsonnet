@@ -17,7 +17,9 @@ macro_rules! impl_conversions {
                 Ok(sql_parse::query_from_sql(input, $rule)?)
             }
             pub fn from_jsonnet(input: &str) -> Result<Self, Error> {
-                jsonnet::evaluate(input)
+                let json = jsonnet::evaluate(input)?;
+                Ok(serde_json::from_str(&json)
+                    .map_err(|e| crate::error::JsonError::from(&json, e))?)
             }
             pub fn to_sql(&self, compact: bool) -> String {
                 to_sql::ToSql::to_sql_str(self, compact)
