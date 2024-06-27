@@ -32,13 +32,13 @@ fn evaluate_snippet(
 ) -> Result<jrsonnet_evaluator::Val, crate::error::JsonnetError> {
     state
         .evaluate_snippet(filename, src)
-        .map_err(|e| JsonnetError::from(Some(filename), src, e))
+        .map_err(|e| JsonnetError::from(src, e))
 }
 
 mod resolver {
     // TODO: There might be an easier way of doing this...
     use super::*;
-    const UTILS_FILENAME: &str = "utils.libsonnet";
+    const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
     #[derive(Trace)]
     pub struct Resolver {
         inner: jrsonnet_evaluator::FileImportResolver,
@@ -95,7 +95,7 @@ pub fn evaluate(jsonnet: &str) -> Result<String, crate::error::JsonnetError> {
     let val = evaluate_snippet("input.jsonnet", jsonnet, &state)?;
     let format = Box::new(jrsonnet_evaluator::manifest::JsonFormat::cli(3));
     val.manifest(format)
-        .map_err(|e| JsonnetError::from(None, jsonnet, e))
+        .map_err(|e| JsonnetError::from(jsonnet, e))
 }
 
 #[derive(Default)]
