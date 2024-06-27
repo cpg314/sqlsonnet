@@ -150,7 +150,7 @@ fn main_impl() -> Result<(), Error> {
             let input = input.contents()?;
             info!("Converting Jsonnet file {} to SQL", filename);
 
-            let queries = Queries::from_jsonnet(&input)?;
+            let queries = Queries::from_jsonnet(&input, Default::default())?;
 
             let has = |l| display_format.iter().any(|l2| l2 == &l);
             // Display queries

@@ -3,7 +3,7 @@ use jrsonnet_evaluator::parser::SourcePath;
 use jrsonnet_gcmodule::Trace;
 use jrsonnet_stdlib::StateExt;
 use serde::Serialize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Jsonnet code that implemens [`std::fmt::Display`]
 pub struct Jsonnet(serde_json::Value);
@@ -35,6 +35,14 @@ fn evaluate_snippet(
         .map_err(|e| JsonnetError::from(src, e))
 }
 
+#[derive(Default)]
+pub struct ImportPaths(Vec<PathBuf>);
+impl<P: Into<PathBuf>> From<P> for ImportPaths {
+    fn from(source: P) -> Self {
+        Self(vec![source.into()])
+    }
+}
+
 mod resolver {
     // TODO: There might be an easier way of doing this...
     use super::*;
@@ -45,9 +53,9 @@ mod resolver {
         utils: Vec<u8>,
     }
     impl Resolver {
-        pub fn new() -> Self {
+        pub fn new(paths: ImportPaths) -> Self {
             Self {
-                inner: Default::default(),
+                inner: jrsonnet_evaluator::FileImportResolver::new(paths.0),
                 utils: include_bytes!("../utils.libsonnet").into(),
             }
         }
@@ -87,10 +95,13 @@ mod resolver {
 }
 
 /// Evaluate Jsonnet into JSON
-pub fn evaluate(jsonnet: &str) -> Result<String, crate::error::JsonnetError> {
+pub fn evaluate(
+    jsonnet: &str,
+    import_paths: ImportPaths,
+) -> Result<String, crate::error::JsonnetError> {
     let state = jrsonnet_evaluator::State::default();
     state.with_stdlib();
-    state.set_import_resolver(resolver::Resolver::new());
+    state.set_import_resolver(resolver::Resolver::new(import_paths));
 
     let val = evaluate_snippet("input.jsonnet", jsonnet, &state)?;
     let format = Box::new(jrsonnet_evaluator::manifest::JsonFormat::cli(3));
