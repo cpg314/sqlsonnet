@@ -19,7 +19,7 @@ fn sql_roundtrip() -> anyhow::Result<()> {
     println!("{}", jsonnet);
 
     // Jsonnet to queries
-    let queries2 = Queries::from_jsonnet(&jsonnet)?;
+    let queries2 = Queries::from_jsonnet(&jsonnet, Default::default())?;
     assert_eq!(queries, queries2);
 
     Ok(())
