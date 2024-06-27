@@ -1,0 +1,33 @@
+[package]
+name = "sqlsonnet"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "sqlsonnet"
+path = "src/sqlsonnet.rs"
+
+[dependencies]
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap.workspace = true
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.117"
+jrsonnet-evaluator = { git = "https://github.com/CertainLach/jrsonnet", package = "jrsonnet-evaluator", rev = "f319c354516886c3a2952928ec3058e009ce5deb", features = ["exp-null-coaelse"] }
+jrsonnet-stdlib = { git = "https://github.com/CertainLach/jrsonnet", package = "jrsonnet-stdlib", rev = "f319c354516886c3a2952928ec3058e009ce5deb", features = ["exp-null-coaelse"] }
+jrsonnet-parser = { git = "https://github.com/CertainLach/jrsonnet", package = "jrsonnet-parser", rev = "f319c354516886c3a2952928ec3058e009ce5deb", features = ["exp-null-coaelse"] }
+jrsonnet-gcmodule = "0.3.6"
+miette = { version = "7.2.0", features = ["fancy", "syntect-highlighter"] }
+clap-stdin = "0.4.0"
+thiserror.workspace = true
+bat = { version = "0.24.0", default-features = false }
+lazy_static = "1.4.0"
+glob = "0.3.1"
+pest = "2.7.10"
+pest_derive = { version = "2.7.10", features = ["grammar-extras"] }
+serde_with = "3.8.1"
+itertools.workspace = true
+pretty_assertions = "1.4.0"
+
+[dev-dependencies]
+anyhow.workspace = true

@@ -19,4 +19,4 @@ reqwest = { version = "0.12.4", features = ["rustls-tls", "json", "gzip", "strea
 thiserror.workspace = true
 itertools.workspace = true
 
-sqlsonnet = { path = "../" }
+sqlsonnet = { path = "../sqlsonnet" }
