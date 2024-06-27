@@ -1,8 +1,8 @@
 use std::io::IsTerminal;
+use std::path::Path;
 use std::str::FromStr;
 
 use clap::Parser;
-use std::path::Path;
 use tracing::*;
 
 use sqlsonnet::Error;

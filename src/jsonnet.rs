@@ -1,10 +1,12 @@
-use crate::error::JsonnetError;
+use std::path::{Path, PathBuf};
+
 use itertools::Itertools;
 use jrsonnet_evaluator::parser::SourcePath;
 use jrsonnet_gcmodule::Trace;
 use jrsonnet_stdlib::StateExt;
 use serde::Serialize;
-use std::path::{Path, PathBuf};
+
+use crate::error::JsonnetError;
 
 const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
 
@@ -48,7 +50,7 @@ impl ImportPaths {
             .iter()
             .map(|f| glob::glob(f.join("*.libsonnet").to_str().unwrap()))
             .filter_map(|glob| glob.ok())
-            .flat_map(|f| f)
+            .flatten()
             .filter_map(|f| f.ok())
             .map(|f| {
                 format!(

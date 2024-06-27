@@ -1,17 +1,19 @@
-use axum::{http::Request, response::Response};
-use clap::Parser;
-use itertools::Itertools;
-use sqlsonnet::{ImportPaths, Query};
+mod cache;
+mod error;
+use error::*;
+
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+
+use axum::{http::Request, response::Response};
+use clap::Parser;
+use itertools::Itertools;
 use tracing::*;
 
-mod cache;
-mod error;
-use error::*;
+use sqlsonnet::{ImportPaths, Query};
 
 /// Reverse proxies a Clickhouse HTTP server, transforming Jsonnet or JSON queries into SQL.
 /// WARN: For now, the server assumes that the client are trusted. For example, they might be able

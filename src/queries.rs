@@ -1,6 +1,7 @@
 #![allow(unstable_name_collisions)]
-use itertools::Itertools;
+pub use expr::*;
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 /// A set of SQL queries
@@ -41,7 +42,6 @@ impl<'a> IntoIterator for &'a Queries {
     }
 }
 
-pub use expr::*;
 pub mod expr {
     use super::*;
     #[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]

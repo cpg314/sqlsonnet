@@ -1,5 +1,6 @@
-use crate::queries::*;
 use std::fmt::{self, Write};
+
+use crate::queries::*;
 
 pub(super) trait ToSql: Sized {
     fn to_sql(&self, f: &mut IndentedPrinter<'_>) -> fmt::Result;
