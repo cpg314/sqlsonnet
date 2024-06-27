@@ -28,19 +28,24 @@ pub struct JsonnetError {
     #[label]
     pub span: Option<miette::SourceSpan>,
 }
+
 impl JsonnetError {
-    pub fn from(filename: Option<&str>, src: &str, error: jrsonnet_evaluator::Error) -> Self {
-        Self {
-            src: miette::NamedSource::new(filename.unwrap_or("source.jsonnet"), src.into())
-                .with_language("jsonnet"),
-            reason: error.to_string(),
-            span: if let jrsonnet_evaluator::error::ErrorKind::ImportSyntaxError { error, .. } =
-                error.error()
-            {
-                Some(miette::SourceSpan::new(error.location.offset.into(), 1))
-            } else {
-                None
-            },
+    pub fn from(src: &str, error: jrsonnet_evaluator::Error) -> Self {
+        let reason = error.to_string();
+        if let jrsonnet_evaluator::error::ErrorKind::ImportSyntaxError { error, path } =
+            error.error()
+        {
+            Self {
+                reason,
+                src: miette::NamedSource::new(path.source_path().to_string(), path.code().into()),
+                span: Some(miette::SourceSpan::new(error.location.offset.into(), 1)),
+            }
+        } else {
+            Self {
+                reason,
+                src: miette::NamedSource::new("source.jsonnet", src.into()),
+                span: None,
+            }
         }
     }
 }
