@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use super::Query;
+use super::SqlQuery;
 
 #[derive(thiserror::Error, Debug)]
 pub enum CacheError {
@@ -14,7 +14,7 @@ pub enum CacheError {
 #[allow(dead_code)]
 pub struct Cache {
     path: PathBuf,
-    entries: Mutex<HashMap<Query, Arc<Mutex<()>>>>,
+    entries: Mutex<HashMap<SqlQuery, Arc<Mutex<()>>>>,
 }
 impl Cache {
     pub fn init(path: &Path) -> Result<Self, CacheError> {

@@ -7,12 +7,12 @@ use super::cache::CacheError;
 pub enum Error {
     #[error("Sqlsonnet error: {0}")]
     SqlSonnet(#[from] sqlsonnet::Error),
-    #[error("Multiple queries are not supported")]
-    MultipleQueries,
     #[error("Clickhouse error: {0}")]
     Clickhouse(#[from] ClickhouseError),
     #[error("Cache error: {0}")]
     Cache(#[from] CacheError),
+    #[error("Task panicked: {0}")]
+    JoinError(#[from] tokio::task::JoinError),
 }
 #[derive(thiserror::Error, Debug)]
 pub enum ClickhouseError {
@@ -24,8 +24,10 @@ pub enum ClickhouseError {
 impl axum::response::IntoResponse for Error {
     fn into_response(self) -> Response {
         let code = match self {
-            Error::SqlSonnet(_) | Error::MultipleQueries => axum::http::StatusCode::BAD_REQUEST,
-            Error::Clickhouse(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Error::SqlSonnet(_) => axum::http::StatusCode::BAD_REQUEST,
+            Error::Clickhouse(_) | Error::JoinError(_) => {
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR
+            }
             Error::Cache(_) => todo!(),
         };
         (code, self.to_string()).into_response()

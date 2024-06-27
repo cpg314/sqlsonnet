@@ -1,7 +1,8 @@
 use axum::{http::Request, response::Response};
 use clap::Parser;
 use itertools::Itertools;
-use sqlsonnet::Queries;
+use sqlsonnet::{ImportPaths, Query};
+use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -13,6 +14,8 @@ mod error;
 use error::*;
 
 /// Reverse proxies a Clickhouse HTTP server, transforming Jsonnet or JSON queries into SQL.
+/// WARN: For now, the server assumes that the client are trusted. For example, they might be able
+///       to access the filesystem via standard library calls, cause large resource usage, etc.
 #[derive(Clone, Parser)]
 #[clap(version)]
 struct Flags {
@@ -26,6 +29,7 @@ struct Flags {
     password: Option<String>,
     #[clap(long)]
     cache: Option<PathBuf>,
+    /// Folder with Jsonnet library files
     #[clap(long)]
     library: Option<PathBuf>,
     #[clap(long)]
@@ -42,19 +46,20 @@ async fn main() -> anyhow::Result<()> {
 }
 
 #[derive(Hash, Eq, PartialEq)]
-struct Query(String);
-impl From<String> for Query {
+struct SqlQuery(String);
+impl From<String> for SqlQuery {
     fn from(source: String) -> Self {
         Self(source)
     }
 }
-impl From<&str> for Query {
+impl From<&str> for SqlQuery {
     fn from(source: &str) -> Self {
         Self(source.into())
     }
 }
 
 async fn handle_query(
+    axum::extract::Query(params): axum::extract::Query<BTreeMap<String, String>>,
     axum::extract::State(state): axum::extract::State<State>,
     request: String,
 ) -> Result<axum::http::Response<reqwest::Body>, Error> {
@@ -66,24 +71,28 @@ async fn handle_query(
         .filter(|l| !l.is_empty())
         .join(" ");
     info!(request = request_log, "Handling query");
-    // Compile
-    let queries = Queries::from_jsonnet(
-        &request,
-        state
+    let sql = if request.starts_with("SELECT") {
+        request
+    } else {
+        // Compile
+        let library: ImportPaths = state
             .args
             .library
             .as_ref()
             .map(|l| l.into())
-            .unwrap_or_default(),
-    )?;
-    info!(queries = queries.len(), "Compiled queries");
-    if queries.len() > 1 {
-        return Err(Error::MultipleQueries);
-    }
-    // Submit to Clickhouse and forward reply
-    let sql = queries.to_sql(true);
-    info!(sql, "Sending queries to Clickhouse");
-    let resp = state.send_query(sql.into()).await?;
+            .unwrap_or_default();
+        tokio::task::spawn_blocking(move || {
+            // Automatically add the imports
+            let request = [library.imports(), request].join("\n");
+            let query = Query::from_jsonnet(&request, library)?;
+            info!("Compiled query");
+            // Submit to Clickhouse and forward reply
+            Ok::<String, Error>(query.to_sql(true))
+        })
+        .await??
+    };
+    info!(sql, "Sending query to Clickhouse");
+    let resp = state.send_query(sql.into(), params).await?;
     Ok(resp.into())
 }
 
@@ -106,15 +115,21 @@ impl State {
             args: Arc::new(args.clone()),
         })
     }
-    async fn send_query(&self, query: Query) -> Result<reqwest::Response, ClickhouseError> {
+    async fn send_query(
+        &self,
+        query: SqlQuery,
+        params: BTreeMap<String, String>,
+    ) -> Result<reqwest::Response, ClickhouseError> {
         let mut hasher = DefaultHasher::default();
         query.hash(&mut hasher);
+        params.hash(&mut hasher);
         let id = hasher.finish();
         info!(id, "Sending query to clickhouse");
         Ok(self
             .client
             .post(self.args.url.clone())
             .body(query.0)
+            .query(&params)
             .header(reqwest::header::TRANSFER_ENCODING, "chunked")
             .basic_auth(&self.args.username, self.args.password.clone())
             .send()
@@ -122,7 +137,9 @@ impl State {
             .error_for_status()?)
     }
     async fn test_clickhouse(&self) -> Result<(), ClickhouseError> {
-        let resp = self.send_query("SELECT 1+1".into()).await?;
+        let resp = self
+            .send_query("SELECT 1+1".into(), Default::default())
+            .await?;
         let headers = resp.headers().clone();
         let resp = resp.text().await?;
         if resp.trim() != "2" {
