@@ -29,28 +29,53 @@ LIMIT 10;
 
 The main goal of this tool is to convert Jsonnet statements to and from SQL.
 
-```text
-Usage: sqlsonnet [OPTIONS] <COMMAND>
+#### Jsonnet to SQL
 
-Commands:
-  from-sql  Convert SQL to Jsonnet
-  to-sql    Convert Jsonnet to SQL
-  help      Print this message or the help of the given subcommand(s)
+```text
+Usage: sqlsonnet to-sql [OPTIONS] <INPUT>
+
+Arguments:
+  <INPUT>  Input file (path or - for stdin)
 
 Options:
-      --theme <THEME>  Color theme for syntax highlighting [env: SQLSONNET_THEME=] [possible
-                       values: 1337, Coldark-Cold, Coldark-Dark, DarkNeon, Dracula, GitHub,
-                       "Monokai Extended", "Monokai Extended Bright", "Monokai Extended Light",
-                       "Monokai Extended Origin", Nord, OneHalfDark, OneHalfLight, "Solarized
-                       (dark)", "Solarized (light)", "Sublime Snazzy", TwoDark, "Visual Studio
-                       Dark+", ansi, base16, base16-256, gruvbox-dark, gruvbox-light, zenburn]
-  -h, --help           Print help
-  -V, --version        Print version
+      --display-format <DISPLAY_FORMAT>
+          Display the converted SQL, the intermediary Json, or the original Jsonnet [default: sql] [possible values: sql, jsonnet, json]
+  -h, --help
+          Print help
+
 ```
 
-```console
+_Example_
+
+```
 $ sqlsonnet from-sql test.sql
 $ cat test.sql | sqlsonnet from-sql -
+$ # Piping into clickhouse client
+$ sqlsonnet from-sql test.sql | clickhouse client -f PrettyMonoBlock --multiquery --host ... --user ...
+```
+
+#### SQL to Jsonnet
+
+This mode is useful to discover the sqlsonnet syntax from SQL queries. The parser is far from perfect. Expressions are parsed as long as subqueries are encountered; then they are simply represented as strings.
+
+```
+Usage: sqlsonnet from-sql [OPTIONS] <INPUT>
+
+Arguments:
+  <INPUT>  Input file (path or - for stdin)
+
+Options:
+      --display-format <DISPLAY_FORMAT>
+          Display the converted Jsonnet output and/or the SQL roundtrip [default: jsonnet] [possible values: sql, jsonnet, json]
+      --diff
+          Convert back to SQL and print the differences with the original, if any
+  -h, --help
+          Print help
+```
+
+_Example_
+
+```console
 $ sqlsonnet to-sql test.jsonnet
 $ cat test.jsonnet | sqlsonnet to-sql -
 ```

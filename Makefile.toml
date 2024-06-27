@@ -6,3 +6,12 @@ load_script = "wget -nc https://raw.githubusercontent.com/cpg314/cargo-make-temp
 [tasks.pestfmt]
 command = "pestfmt"
 args = ["."]
+
+[tasks.help]
+script = '''
+#!/usr/bin/env bash
+COMMAND="cargo run -q -r --bin sqlsonnet --"
+eval $COMMAND --help
+eval $COMMAND to-sql --help
+eval $COMMAND from-sql --help
+'''
