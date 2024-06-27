@@ -1,9 +1,12 @@
 use crate::error::JsonnetError;
+use itertools::Itertools;
 use jrsonnet_evaluator::parser::SourcePath;
 use jrsonnet_gcmodule::Trace;
 use jrsonnet_stdlib::StateExt;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
+
+const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
 
 /// Jsonnet code that implemens [`std::fmt::Display`]
 pub struct Jsonnet(serde_json::Value);
@@ -37,6 +40,30 @@ fn evaluate_snippet(
 
 #[derive(Default)]
 pub struct ImportPaths(Vec<PathBuf>);
+impl ImportPaths {
+    // Produces statements of the form
+    // local file_stem = import 'path.libsonnet';
+    pub fn imports(&self) -> String {
+        self.0
+            .iter()
+            .map(|f| glob::glob(f.join("*.libsonnet").to_str().unwrap()))
+            .filter_map(|glob| glob.ok())
+            .flat_map(|f| f)
+            .filter_map(|f| f.ok())
+            .map(|f| {
+                format!(
+                    "local {} = import '{}';",
+                    f.file_stem().unwrap().to_string_lossy(),
+                    f.file_name().unwrap().to_string_lossy()
+                )
+            })
+            .chain(std::iter::once(format!(
+                "local u = import '{}';",
+                UTILS_FILENAME
+            )))
+            .join("\n")
+    }
+}
 impl<P: Into<PathBuf>> From<P> for ImportPaths {
     fn from(source: P) -> Self {
         Self(vec![source.into()])
@@ -46,7 +73,6 @@ impl<P: Into<PathBuf>> From<P> for ImportPaths {
 mod resolver {
     // TODO: There might be an easier way of doing this...
     use super::*;
-    const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
     #[derive(Trace)]
     pub struct Resolver {
         inner: jrsonnet_evaluator::FileImportResolver,
