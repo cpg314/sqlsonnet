@@ -30,6 +30,7 @@ struct Flags {
 #[derive(Parser)]
 enum Command {
     /// Convert SQL to Jsonnet
+    #[clap(alias = "f")]
     FromSql {
         /// Input file (path or - for stdin).
         input: Input,
@@ -41,6 +42,7 @@ enum Command {
         diff: bool,
     },
     /// Convert Jsonnet to SQL
+    #[clap(alias = "t")]
     ToSql {
         /// Input file (path or - for stdin).
         input: Input,
