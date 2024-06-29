@@ -8,9 +8,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use axum::{http::Request, response::Response};
+use axum::{
+    http::Request,
+    response::{IntoResponse, Response},
+};
 use clap::Parser;
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use tracing::*;
 
 use sqlsonnet::{ImportPaths, Queries, Query};
@@ -47,19 +51,6 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[derive(Hash, Eq, PartialEq)]
-struct SqlQuery(String);
-impl From<String> for SqlQuery {
-    fn from(source: String) -> Self {
-        Self(source)
-    }
-}
-impl From<&str> for SqlQuery {
-    fn from(source: &str) -> Self {
-        Self(source.into())
-    }
-}
-
 fn decode_query(request: String, library: ImportPaths) -> Result<String, Error> {
     // Automatically add the imports
     let request = [library.imports(), request].join("\n");
@@ -80,7 +71,6 @@ fn decode_query(request: String, library: ImportPaths) -> Result<String, Error> 
             }
         }
     }?;
-    info!("Compiled query");
     // Submit to Clickhouse and forward reply
     Ok::<String, Error>(query.to_sql(true))
 }
@@ -89,7 +79,7 @@ async fn handle_query(
     axum::extract::Query(params): axum::extract::Query<BTreeMap<String, String>>,
     axum::extract::State(state): axum::extract::State<State>,
     request: String,
-) -> Result<axum::http::Response<reqwest::Body>, Error> {
+) -> Result<axum::response::Response, Error> {
     // Remove whitespace and comments for logging
     let request_log = request
         .lines()
@@ -110,23 +100,57 @@ async fn handle_query(
             .unwrap_or_default();
         tokio::task::spawn_blocking(move || decode_query(request, library)).await??
     };
-    info!(sql, "Sending query to Clickhouse");
-    let resp = state.send_query(sql.into(), params).await?;
-    Ok(resp.into())
+    state
+        .send_query(ClickhouseQuery { query: sql, params })
+        .await
 }
 
 #[derive(Clone)]
 struct State {
     client: reqwest::Client,
     args: Arc<Flags>,
-    _cache: Option<Arc<cache::Cache>>,
+    cache: Option<Arc<cache::Cache>>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Hash)]
+pub struct ClickhouseQuery {
+    query: String,
+    params: BTreeMap<String, String>,
+}
+impl ClickhouseQuery {
+    fn heartbeat() -> Self {
+        Self {
+            query: "SELECT 1+1".into(),
+            params: Default::default(),
+        }
+    }
+}
+pub struct PreparedRequest {
+    id: u64,
+    query: Option<ClickhouseQuery>,
+    builder: reqwest::RequestBuilder,
+}
+impl std::fmt::Debug for PreparedRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id)
+    }
+}
+impl PreparedRequest {
+    pub fn take_query(&mut self) -> Option<ClickhouseQuery> {
+        self.query.take()
+    }
+    #[tracing::instrument()]
+    pub async fn send(self) -> Result<reqwest::Response, ClickhouseError> {
+        info!("Sending query to Clickhouse");
+        self.builder.send().await.map_err(ClickhouseError::from)
+    }
 }
 
 impl State {
     fn new(args: &Flags) -> Result<Self, Error> {
         Ok(Self {
             client: reqwest::Client::new(),
-            _cache: if let Some(path) = &args.cache {
+            cache: if let Some(path) = &args.cache {
                 Some(Arc::new(cache::Cache::init(path)?))
             } else {
                 None
@@ -134,30 +158,43 @@ impl State {
             args: Arc::new(args.clone()),
         })
     }
-    async fn send_query(
-        &self,
-        query: SqlQuery,
-        params: BTreeMap<String, String>,
-    ) -> Result<reqwest::Response, ClickhouseError> {
+    fn prepare_request(&self, query: ClickhouseQuery) -> PreparedRequest {
+        // Hash query
         let mut hasher = DefaultHasher::default();
         query.hash(&mut hasher);
-        params.hash(&mut hasher);
-        let id = hasher.finish();
-        info!(id, "Sending query to clickhouse");
-        Ok(self
+        self.args.username.hash(&mut hasher);
+        self.args.password.hash(&mut hasher);
+        let inner = self
             .client
             .post(self.args.url.clone())
-            .body(query.0)
-            .query(&params)
+            .body(query.query.clone())
+            .query(&query.params)
             .header(reqwest::header::TRANSFER_ENCODING, "chunked")
-            .basic_auth(&self.args.username, self.args.password.clone())
-            .send()
-            .await?
-            .error_for_status()?)
+            .basic_auth(&self.args.username, self.args.password.clone());
+        PreparedRequest {
+            id: hasher.finish(),
+            query: Some(query),
+            builder: inner,
+        }
+    }
+    async fn send_query(&self, query: ClickhouseQuery) -> Result<axum::response::Response, Error> {
+        let request = self.prepare_request(query);
+
+        if let Some(cache) = &self.cache {
+            Ok(cache.process(request).await?)
+        } else {
+            Ok(request
+                .send()
+                .await
+                // reqwest::Response to http::Response<reqwest::Body>
+                .map(axum::http::Response::<reqwest::Body>::from)?
+                .into_response())
+        }
     }
     async fn test_clickhouse(&self) -> Result<(), ClickhouseError> {
         let resp = self
-            .send_query("SELECT 1+1".into(), Default::default())
+            .prepare_request(ClickhouseQuery::heartbeat())
+            .send()
             .await?;
         let headers = resp.headers().clone();
         let resp = resp.text().await?;
@@ -184,7 +221,7 @@ async fn main_impl() -> anyhow::Result<()> {
             tower_http::trace::TraceLayer::new_for_http()
                 .make_span_with(|request: &axum::http::Request<_>| {
 let id = uuid::Uuid::new_v4();
-                    let matched_path = request
+                    let path = request
                         .extensions()
                         .get::<axum::extract::MatchedPath>()
                         .map(axum::extract::MatchedPath::as_str);
@@ -193,7 +230,7 @@ let id = uuid::Uuid::new_v4();
                         uuid= id.to_string(),
                         method = ?request.method(),
                         agent = request.headers().get(axum::http::header::USER_AGENT).and_then(|v| v.to_str().ok() ).unwrap_or_default(),
-                        matched_path,
+                        path,
                         some_other_field = tracing::field::Empty,
                     )
                 })

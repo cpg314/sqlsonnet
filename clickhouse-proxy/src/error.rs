@@ -30,6 +30,9 @@ impl axum::response::IntoResponse for Error {
             Error::Clickhouse(_) | Error::Join(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             Error::Cache(_) => todo!(),
         };
+        // if let Error::Clickhouse(ClickhouseError::QueryFailure(e)) = &self {
+
+        // }
         (code, self.to_string()).into_response()
     }
 }

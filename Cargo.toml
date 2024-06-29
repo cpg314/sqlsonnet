@@ -5,10 +5,11 @@ edition = "2021"
 [workspace.dependencies]
 anyhow = "1.0.86"
 clap = { version = "4.5.7", features = ["derive", "env"] }
+itertools = "0.13.0"
+serde = "1.0.203"
+thiserror = "1.0.61"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-thiserror = "1.0.61"
-itertools = "0.13.0"
 
 [workspace]
 members = ["sqlsonnet", "clickhouse-proxy"]
