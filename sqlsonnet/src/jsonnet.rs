@@ -40,7 +40,7 @@ fn evaluate_snippet(
         .map_err(|e| JsonnetError::from(src, e))
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct ImportPaths(Vec<PathBuf>);
 impl ImportPaths {
     // Produces statements of the form

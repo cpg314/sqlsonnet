@@ -13,6 +13,8 @@ pub enum Error {
     Cache(#[from] CacheError),
     #[error("Task panicked: {0}")]
     Join(#[from] tokio::task::JoinError),
+    #[error("Multiple queries are not supported (received {0} queries)")]
+    MultipleQueries(usize),
 }
 #[derive(thiserror::Error, Debug)]
 pub enum ClickhouseError {
@@ -24,7 +26,7 @@ pub enum ClickhouseError {
 impl axum::response::IntoResponse for Error {
     fn into_response(self) -> Response {
         let code = match self {
-            Error::SqlSonnet(_) => axum::http::StatusCode::BAD_REQUEST,
+            Error::SqlSonnet(_) | Error::MultipleQueries(_) => axum::http::StatusCode::BAD_REQUEST,
             Error::Clickhouse(_) | Error::Join(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             Error::Cache(_) => todo!(),
         };

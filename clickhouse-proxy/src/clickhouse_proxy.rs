@@ -13,7 +13,7 @@ use clap::Parser;
 use itertools::Itertools;
 use tracing::*;
 
-use sqlsonnet::{ImportPaths, Query};
+use sqlsonnet::{ImportPaths, Queries, Query};
 
 /// Reverse proxies a Clickhouse HTTP server, transforming Jsonnet or JSON queries into SQL.
 /// WARN: For now, the server assumes that the client are trusted. For example, they might be able
@@ -60,6 +60,31 @@ impl From<&str> for SqlQuery {
     }
 }
 
+fn decode_query(request: String, library: ImportPaths) -> Result<String, Error> {
+    // Automatically add the imports
+    let request = [library.imports(), request].join("\n");
+    // We could also use OneOrMany from serde_with, but this seems to break error reporting.
+    let query = {
+        match Query::from_jsonnet(&request, library.clone()) {
+            Ok(r) => Ok(r),
+            Err(e) => {
+                if let Ok(queries) = Queries::from_jsonnet(&request, library) {
+                    if queries.len() == 1 {
+                        Ok(queries.into_iter().next().unwrap())
+                    } else {
+                        Err(Error::MultipleQueries(queries.len()))
+                    }
+                } else {
+                    Err(e.into())
+                }
+            }
+        }
+    }?;
+    info!("Compiled query");
+    // Submit to Clickhouse and forward reply
+    Ok::<String, Error>(query.to_sql(true))
+}
+
 async fn handle_query(
     axum::extract::Query(params): axum::extract::Query<BTreeMap<String, String>>,
     axum::extract::State(state): axum::extract::State<State>,
@@ -83,15 +108,7 @@ async fn handle_query(
             .as_ref()
             .map(|l| l.into())
             .unwrap_or_default();
-        tokio::task::spawn_blocking(move || {
-            // Automatically add the imports
-            let request = [library.imports(), request].join("\n");
-            let query = Query::from_jsonnet(&request, library)?;
-            info!("Compiled query");
-            // Submit to Clickhouse and forward reply
-            Ok::<String, Error>(query.to_sql(true))
-        })
-        .await??
+        tokio::task::spawn_blocking(move || decode_query(request, library)).await??
     };
     info!(sql, "Sending query to Clickhouse");
     let resp = state.send_query(sql.into(), params).await?;
