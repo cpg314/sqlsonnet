@@ -7,7 +7,6 @@ section: "default"
 priority: "extra"
 provides:
   - sqlsonnet
-  - sqlsonnet_clickhouse_proxy
 description: ""
 vendor: "cpg314"
 maintainer: "cpg314 <44120267+cpg314@users.noreply.github.com>"
@@ -15,7 +14,4 @@ homepage: "https://github.com/cpg314/sqlsonnet"
 contents:
   - src: "./target-cross/$ARCH/release/sqlsonnet"
     dst: /usr/local/bin/sqlsonnet
-    expand: true
-  - src: "./target-cross/$ARCH/release/sqlsonnet_clickhouse_proxy"
-    dst: /usr/local/bin/sqlsonnet_clickhouse_proxy
     expand: true
