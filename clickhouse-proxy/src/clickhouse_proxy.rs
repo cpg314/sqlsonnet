@@ -145,7 +145,7 @@ impl State {
         let headers = resp.headers().clone();
         let resp = resp.text().await?;
         if resp.trim() != "2" {
-            return Err(ClickhouseError::Connect(resp.into(), headers));
+            return Err(ClickhouseError::Connect(resp, headers));
         }
         Ok(())
     }

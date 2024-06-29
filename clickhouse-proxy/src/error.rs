@@ -12,7 +12,7 @@ pub enum Error {
     #[error("Cache error: {0}")]
     Cache(#[from] CacheError),
     #[error("Task panicked: {0}")]
-    JoinError(#[from] tokio::task::JoinError),
+    Join(#[from] tokio::task::JoinError),
 }
 #[derive(thiserror::Error, Debug)]
 pub enum ClickhouseError {
@@ -25,9 +25,7 @@ impl axum::response::IntoResponse for Error {
     fn into_response(self) -> Response {
         let code = match self {
             Error::SqlSonnet(_) => axum::http::StatusCode::BAD_REQUEST,
-            Error::Clickhouse(_) | Error::JoinError(_) => {
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR
-            }
+            Error::Clickhouse(_) | Error::Join(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             Error::Cache(_) => todo!(),
         };
         (code, self.to_string()).into_response()

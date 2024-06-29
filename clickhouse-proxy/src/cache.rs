@@ -19,7 +19,7 @@ pub struct Cache {
 }
 impl Cache {
     pub fn init(path: &Path) -> Result<Self, CacheError> {
-        std::fs::create_dir(&path)?;
+        std::fs::create_dir(path)?;
         Ok(Self {
             path: path.into(),
             entries: Default::default(),
