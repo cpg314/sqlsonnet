@@ -96,6 +96,7 @@ impl Response {
                 }
             }
             if size > LIMIT_BYTES {
+                metrics::counter!("large-responses").increment(1);
                 warn!(size, "Not caching a large response");
                 drop(bw);
                 *guard = true;
@@ -106,6 +107,7 @@ impl Response {
             }
             // Remove processing mark
             drop(guard);
+            metrics::counter!("response-size").increment(size as u64);
             Ok::<_, CacheError>(())
         });
         let body = axum::body::Body::from_stream(body.map(move |buf| {
@@ -174,6 +176,7 @@ impl Cache {
                 warn!("This query previously failed to cache from being too large. Returning directly");
                 return Ok(http::response::Response::from(request.send().await?).into_response());
             }
+            metrics::counter!("concurrent-queries").increment(1);
         }
         // Not already processing
         let filename = self.path.join(id.to_string());
@@ -181,6 +184,7 @@ impl Cache {
             info!("Reading response from cache");
             match Response::read(&filename).await {
                 Ok(r) => {
+                    metrics::counter!("cache-hits").increment(1);
                     return Ok(r);
                 }
                 Err(e) => {
@@ -194,6 +198,7 @@ impl Cache {
         self.entries.lock().await.insert(id, mutex.clone());
         let guard = mutex.lock_owned().await;
 
+        metrics::counter!("cache-misses").increment(1);
         Response::write_adapt(request, &filename, guard).await
     }
 }

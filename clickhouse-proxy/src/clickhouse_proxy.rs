@@ -14,6 +14,7 @@ use axum::{
 };
 use clap::Parser;
 use itertools::Itertools;
+use metrics_exporter_prometheus::PrometheusBuilder;
 use serde::{Deserialize, Serialize};
 use tracing::*;
 
@@ -80,6 +81,7 @@ async fn handle_query(
     axum::extract::State(state): axum::extract::State<State>,
     request: String,
 ) -> Result<axum::response::Response, Error> {
+    metrics::counter!("requests").increment(1);
     // Remove whitespace and comments for logging
     let request_log = request
         .lines()
@@ -209,6 +211,9 @@ async fn main_impl() -> anyhow::Result<()> {
     let args = Flags::parse();
     sqlsonnet::setup_logging();
 
+    let builder = PrometheusBuilder::new();
+    let handle = builder.install_recorder()?;
+
     info!("Testing connection with Clickhouse");
     let state = State::new(&args)?;
     state.test_clickhouse().await?;
@@ -216,6 +221,9 @@ async fn main_impl() -> anyhow::Result<()> {
 
     let app = axum::Router::new()
         .route("/", axum::routing::post(handle_query))
+        .route("/metrics", axum::routing::get(||async move {
+            handle.render()
+        }))
         .with_state(state)
         .layer(
             tower_http::trace::TraceLayer::new_for_http()
@@ -235,7 +243,7 @@ let id = uuid::Uuid::new_v4();
                     )
                 })
                 .on_request(|_request: &Request<_>, _span: &Span| {
-                    info!("Serving request");
+                    info!("Serving request");                    
                 })
                 .on_response(|response: &Response, latency: Duration, _span: &Span| {
                     let code =response.status();
