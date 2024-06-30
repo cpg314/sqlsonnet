@@ -37,6 +37,9 @@ struct Flags {
     /// Folder with Jsonnet library files
     #[clap(long)]
     library: Option<PathBuf>,
+    /// Prepended to all requests
+    #[clap(long)]
+    prelude: Option<PathBuf>,
     #[clap(long)]
     port: u16,
 }
@@ -52,12 +55,13 @@ async fn main() -> anyhow::Result<()> {
 
 fn decode_query(
     request: String,
-    resolver: Arc<FsResolver>,
+    state: State,
     compact: bool,
     limit: Option<usize>,
 ) -> Result<String, Error> {
-    // Automatically add the imports
-    let request = [resolver.as_ref().imports(), request].join("\n");
+    let request = [state.prelude()?, request].join("\n");
+    println!("{}", request);
+    let resolver = state.resolver;
     // We could also use OneOrMany from serde_with, but this seems to break error reporting.
     let mut query = {
         match Query::from_jsonnet(&request, resolver.clone()) {
@@ -101,20 +105,12 @@ async fn handle_query(
     let sql = if request.starts_with("SELECT") {
         request
     } else {
-        let resolver = state.resolver.clone();
-        tokio::task::spawn_blocking(move || decode_query(request, resolver, true, None)).await??
+        let state = state.clone();
+        tokio::task::spawn_blocking(move || decode_query(request, state, true, None)).await??
     };
     state
         .send_query(ClickhouseQuery { query: sql, params })
         .await
-}
-
-#[derive(Clone)]
-struct State {
-    client: reqwest::Client,
-    args: Arc<Flags>,
-    resolver: Arc<FsResolver>,
-    cache: Option<Arc<cache::Cache>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Hash)]
@@ -151,6 +147,14 @@ impl PreparedRequest {
     }
 }
 
+#[derive(Clone)]
+struct State {
+    client: reqwest::Client,
+    args: Arc<Flags>,
+    resolver: Arc<FsResolver>,
+    cache: Option<Arc<cache::Cache>>,
+}
+
 impl State {
     fn new(args: &Flags) -> Result<Self, Error> {
         Ok(Self {
@@ -166,6 +170,19 @@ impl State {
             },
             args: Arc::new(args.clone()),
         })
+    }
+
+    fn prelude(&self) -> Result<String, Error> {
+        Ok(format!(
+            "{}{}",
+            sqlsonnet::import("u", sqlsonnet::UTILS_FILENAME),
+            self.args
+                .prelude
+                .as_ref()
+                .map(|p| std::fs::read_to_string(p).map_err(|e| Error::Prelude(p.into(), e)))
+                .transpose()?
+                .unwrap_or_default()
+        ))
     }
     fn prepare_request(&self, query: ClickhouseQuery) -> PreparedRequest {
         // Hash query

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use axum::response::Response;
 use tracing::*;
 
@@ -17,6 +19,8 @@ pub enum Error {
     MultipleQueries(usize),
     #[error("Could not convert body to bytes: {0}")]
     ConvertBody(axum::Error),
+    #[error("Failed to read prelude {0}: {1}")]
+    Prelude(PathBuf, std::io::Error),
 }
 #[derive(thiserror::Error, Debug)]
 pub enum ClickhouseError {

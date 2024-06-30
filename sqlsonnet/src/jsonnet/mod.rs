@@ -11,6 +11,12 @@ use jrsonnet_stdlib::StateExt;
 
 use crate::error::JsonnetError;
 
+pub const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
+
+pub fn import(variable: &str, filename: &str) -> String {
+    format!("local {} = import '{}';", variable, filename)
+}
+
 fn evaluate_snippet(
     filename: &str,
     src: &str,

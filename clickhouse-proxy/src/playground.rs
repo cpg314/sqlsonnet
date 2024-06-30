@@ -27,11 +27,11 @@ async fn playground_post(
     axum::extract::State(state): axum::extract::State<State>,
     request: String,
 ) -> Result<axum::Json<PlaygroundResponse>, Error> {
-    let resolver = state.resolver.clone();
-    let sql = tokio::task::spawn_blocking(move || {
-        decode_query(request, resolver, false, Some(ROWS_LIMIT))
-    })
-    .await??;
+    let sql = {
+        let state = state.clone();
+        tokio::task::spawn_blocking(move || decode_query(request, state, false, Some(ROWS_LIMIT)))
+            .await??
+    };
     let resp = state
         .send_query(ClickhouseQuery {
             query: sql.clone(),
@@ -49,10 +49,10 @@ async fn playground_post(
 }
 async fn playground(
     axum::extract::State(state): axum::extract::State<State>,
-) -> axum::response::Html<String> {
-    let imports = state.resolver.as_ref().imports();
+) -> Result<axum::response::Html<String>, Error> {
+    let prelude = state.prelude()?;
     let html = include_str!("playground.html")
-        .replace("[IMPORTS]", &imports)
-        .replace("[IMPORTS_ROWS]", &imports.lines().count().to_string());
-    axum::response::Html(html)
+        .replace("[PRELUDE]", &prelude)
+        .replace("[PRELUDE_ROWS]", &prelude.lines().count().to_string());
+    Ok(axum::response::Html(html))
 }

@@ -1,11 +1,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use itertools::Itertools;
-
 use super::*;
-
-const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
 
 /// A simpler version of jrsonnet_evaluator::ImportResolver, so that we can
 /// easily implement it on Arc<T>.
@@ -52,26 +48,6 @@ impl FsResolver {
     }
     pub fn new(search_paths: Vec<PathBuf>) -> Self {
         Self { search_paths }
-    }
-    fn paths(&self) -> impl Iterator<Item = PathBuf> + '_ {
-        self.search_paths
-            .iter()
-            .map(|f| glob::glob(f.join("*.libsonnet").to_str().unwrap()))
-            .filter_map(|glob| glob.ok())
-            .flatten()
-            .filter_map(|f| f.ok())
-    }
-    pub fn imports(&self) -> String {
-        self.paths()
-            .map(|f| {
-                (
-                    f.file_stem().unwrap().to_string_lossy().to_string(),
-                    f.file_name().unwrap().to_string_lossy().to_string(),
-                )
-            })
-            .chain(std::iter::once(("u".into(), UTILS_FILENAME.into())))
-            .map(|(a, b)| format!("local {} = import '{}';", a, b))
-            .join("\n")
     }
 }
 impl ImportResolver for FsResolver {

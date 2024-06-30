@@ -22,7 +22,6 @@ clap-stdin = "0.4.0"
 thiserror.workspace = true
 bat = { version = "0.24.0", default-features = false }
 lazy_static = "1.4.0"
-glob.workspace = true
 pest = "2.7.10"
 pest_derive = { version = "2.7.10", features = ["grammar-extras"] }
 serde_with = "3.8.1"
