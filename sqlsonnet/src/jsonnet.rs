@@ -10,7 +10,7 @@ use crate::error::JsonnetError;
 
 const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
 
-/// Jsonnet code that implemens [`std::fmt::Display`]
+/// Jsonnet code that implements [`std::fmt::Display`]
 pub struct Jsonnet(serde_json::Value);
 impl From<serde_json::Value> for Jsonnet {
     fn from(source: serde_json::Value) -> Self {
