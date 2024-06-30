@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>sqlsonnet playground</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css"
+      integrity="sha512-jnSuA4Ss2PkkikSOLtYs8BlYIeeIK1h99ty4YfvRPAlzr377vr3CXDb7sb7eEEBYjDtcYj+AjBH3FLv5uSJuXg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+      integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap"
+      rel="stylesheet"
+    />
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"
+      integrity="sha512-OeZ4Yrb/W7d2W4rAMOO0HQ9Ro/aWLtpW9BUSR2UOWnSV2hprXLkkYnnCGc9NeLUxxE4ZG7zN16UuT1Elqq8Opg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
+      integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/sql/sql.min.js"
+      integrity="sha512-TZji/E4or1ciET62zt9IgnfFJPkMqV4EhZ8AfiRVZeq+yxCT5O+PomM7nkfttOwX/ckDwjPzevAUhKvXnHl7MA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script src="/play/jsonnet.js"></script>
+  </head>
+  <style>
+    body {
+    }
+    .sql > .CodeMirror {
+      height: auto;
+    }
+    .CodeMirror {
+      min-height: 400px;
+      font-family: "Source Code Pro", monospace;
+      font-size: 12pt !important;
+    }
+    pre {
+      background-color: rgb(240, 240, 240);
+      padding: 10px;
+      height: 100%;
+    }
+  </style>
+  <body>
+    <div class="container mt-2">
+      <div class="row mb-2">
+        <div class="col-12">
+          <h1>sqlsonnet playground</h1>
+          <p>
+            Enter an sqlsonnet query, and visualize the equivalent SQL query as
+            well as the Clickhouse response.
+          </p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-6">
+          <h4>sqlsonnet</h4>
+          <form>
+            <textarea class="form-control" rows="[IMPORTS_ROWS]" disabled>
+[IMPORTS]</textarea
+            >
+            <textarea id="jsonnet"></textarea>
+            <div class="form-text">
+              A return limit of 20 rows is automatically added. Type Control +
+              Enter to submit.
+            </div>
+            <button type="submit" class="btn btn-secondary mt-2">Submit</button>
+          </form>
+        </div>
+        <div class="col-6 sql">
+          <h4>SQL equivalent</h4>
+          <textarea id="sql"></textarea>
+        </div>
+      </div>
+      <div class="row mt-4">
+        <div class="col-12">
+          <h4>Clickhouse response</h4>
+          <div
+            class="alert alert-danger"
+            role="alert"
+            style="display: none"
+          ></div>
+          <pre id="data" style="display: none"></pre>
+        </div>
+      </div>
+    </div>
+    <script>
+     // TODO: Use a recent version of CodeMirror
+      var editor = CodeMirror.fromTextArea(document.getElementById("jsonnet"), {
+        mode: { name: "jsonnet" },
+        lineNumbers: true,
+        indentUnit: 2,
+        matchBrackets: true,
+        lineWrapping: true,
+      });
+      var editor_sql = CodeMirror.fromTextArea(document.getElementById("sql"), {
+        mode: { name: "sql" },
+        lineNumbers: true,
+        indentUnit: 2,
+        lineWrapping: true,
+        readOnly: true,
+        viewportMargin: Infinity,
+      });
+      $(document).on("keydown", function (e) {
+        if ((event.keyCode == 10 || event.keyCode == 13) && event.ctrlKey) {
+          $("form").submit();
+        }
+      });
+
+      var alert = $(".alert");
+      var data = $("#data");
+      $("form").submit(function (e) {
+        e.preventDefault();
+        alert.hide();
+        $.post("/play", editor.getValue(), function (resp) {
+          editor_sql.setValue(resp.sql);
+          data.html(resp.data);
+          data.show();
+        }).fail(function (err) {
+          alert.text(err.responseText);
+          data.hide();
+          alert.show();
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -15,6 +15,8 @@ pub enum Error {
     Join(#[from] tokio::task::JoinError),
     #[error("Multiple queries are not supported (received {0} queries)")]
     MultipleQueries(usize),
+    #[error("Could not convert body to bytes: {0}")]
+    ConvertBody(axum::Error),
 }
 #[derive(thiserror::Error, Debug)]
 pub enum ClickhouseError {
@@ -27,12 +29,8 @@ impl axum::response::IntoResponse for Error {
     fn into_response(self) -> Response {
         let code = match self {
             Error::SqlSonnet(_) | Error::MultipleQueries(_) => axum::http::StatusCode::BAD_REQUEST,
-            Error::Clickhouse(_) | Error::Join(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            Error::Cache(_) => todo!(),
+            _ => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
         };
-        // if let Error::Clickhouse(ClickhouseError::QueryFailure(e)) = &self {
-
-        // }
         (code, self.to_string()).into_response()
     }
 }

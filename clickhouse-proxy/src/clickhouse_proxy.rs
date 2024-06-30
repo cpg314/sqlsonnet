@@ -1,17 +1,15 @@
 mod cache;
 mod error;
 use error::*;
+mod playground;
+mod tracing_layer;
 
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
 
-use axum::{
-    http::Request,
-    response::{IntoResponse, Response},
-};
+use axum::response::IntoResponse;
 use clap::Parser;
 use itertools::Itertools;
 use metrics_exporter_prometheus::PrometheusBuilder;
@@ -52,11 +50,16 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn decode_query(request: String, library: ImportPaths) -> Result<String, Error> {
+fn decode_query(
+    request: String,
+    library: ImportPaths,
+    compact: bool,
+    limit: Option<usize>,
+) -> Result<String, Error> {
     // Automatically add the imports
     let request = [library.imports(), request].join("\n");
     // We could also use OneOrMany from serde_with, but this seems to break error reporting.
-    let query = {
+    let mut query = {
         match Query::from_jsonnet(&request, library.clone()) {
             Ok(r) => Ok(r),
             Err(e) => {
@@ -72,8 +75,13 @@ fn decode_query(request: String, library: ImportPaths) -> Result<String, Error> 
             }
         }
     }?;
+    if let Some(limit) = limit {
+        match &mut query {
+            Query::Select(query) => query.limit = Some(limit),
+        }
+    }
     // Submit to Clickhouse and forward reply
-    Ok::<String, Error>(query.to_sql(true))
+    Ok::<String, Error>(query.to_sql(compact))
 }
 
 async fn handle_query(
@@ -93,14 +101,8 @@ async fn handle_query(
     let sql = if request.starts_with("SELECT") {
         request
     } else {
-        // Compile
-        let library: ImportPaths = state
-            .args
-            .library
-            .as_ref()
-            .map(|l| l.into())
-            .unwrap_or_default();
-        tokio::task::spawn_blocking(move || decode_query(request, library)).await??
+        let library = state.library();
+        tokio::task::spawn_blocking(move || decode_query(request, library, true, None)).await??
     };
     state
         .send_query(ClickhouseQuery { query: sql, params })
@@ -112,6 +114,15 @@ struct State {
     client: reqwest::Client,
     args: Arc<Flags>,
     cache: Option<Arc<cache::Cache>>,
+}
+impl State {
+    fn library(&self) -> ImportPaths {
+        self.args
+            .library
+            .as_ref()
+            .map(|l| l.into())
+            .unwrap_or_default()
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Hash)]
@@ -219,56 +230,16 @@ async fn main_impl() -> anyhow::Result<()> {
     state.test_clickhouse().await?;
     info!("Connected with Clickhouse");
 
-    let app = axum::Router::new()
-        .route("/", axum::routing::post(handle_query))
-        .route("/metrics", axum::routing::get(||async move {
-            handle.render()
-        }))
-        .with_state(state)
-        .layer(
-            tower_http::trace::TraceLayer::new_for_http()
-                .make_span_with(|request: &axum::http::Request<_>| {
-let id = uuid::Uuid::new_v4();
-                    let path = request
-                        .extensions()
-                        .get::<axum::extract::MatchedPath>()
-                        .map(axum::extract::MatchedPath::as_str);
-                    info_span!(
-                        "request",
-                        uuid= id.to_string(),
-                        method = ?request.method(),
-                        agent = request.headers().get(axum::http::header::USER_AGENT).and_then(|v| v.to_str().ok() ).unwrap_or_default(),
-                        path,
-                        some_other_field = tracing::field::Empty,
-                    )
-                })
-                .on_request(|_request: &Request<_>, _span: &Span| {
-                    info!("Serving request");                    
-                })
-                .on_response(|response: &Response, latency: Duration, _span: &Span| {
-                    let code =response.status();
-                    if code.is_client_error() {
-                        warn!( ?latency, ?code, "Sending response with client error");
-                    } else if code.is_server_error() {
-                        error!( ?latency, ?code, "Sending response with server error");
-                    } else {
-                        info!( ?latency, ?code, "Sending response");
-                    };
-                })
-                .on_body_chunk(|_chunk: &axum::body::Bytes, _latency: Duration, _span: &Span| {})
-                .on_eos(
-                    |_trailers: Option<&axum::http::HeaderMap>,
-                     _stream_duration: Duration,
-                     _span: &Span| {},
-                )
-                .on_failure(
-                    |error: tower_http::classify::ServerErrorsFailureClass,
-                     latency: Duration,
-                     _span: &Span| {
-                        warn!(?error, ?latency, "Encountered error");
-                    },
-                ),
-        );
+    let app = tracing_layer::add_layer(
+        axum::Router::new()
+            .route("/", axum::routing::post(handle_query))
+            .nest("/play", playground::router())
+            .route(
+                "/metrics",
+                axum::routing::get(|| async move { handle.render() }),
+            )
+            .with_state(state),
+    );
 
     let address = format!("0.0.0.0:{}", args.port);
     info!("Serving on {}", address);
