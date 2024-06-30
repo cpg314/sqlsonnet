@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use axum::body::Body;
 use axum::http;
+use axum::response::IntoResponse;
 use bincode::Options;
-use bytes::Bytes;
-use reqwest::StatusCode;
+use futures::stream::StreamExt;
 use serde::{Deserialize, Serialize};
+use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
 use tracing::*;
 
@@ -15,7 +15,7 @@ use super::error::{ClickhouseError, Error};
 use super::PreparedRequest;
 use crate::ClickhouseQuery;
 
-const LIMIT_BYTES: u64 = 10_000_000;
+const LIMIT_BYTES: usize = 10_000_000;
 
 #[derive(thiserror::Error, Debug)]
 pub enum CacheError {
@@ -23,110 +23,163 @@ pub enum CacheError {
     IO(#[from] std::io::Error),
     #[error("Serialization error: {0}")]
     Serialization(#[from] bincode::Error),
+    #[error("Failed to send buffer for serialization")]
+    SendBuf,
     #[error("Failed to convert response: {0}")]
     ConvertResponse(http::Error),
-    #[error("Response too large ({0} bytes)")]
-    TooLarge(usize),
+    // #[error("Response too large ({0} bytes)")]
+    // TooLarge(usize),
 }
 
 pub struct Cache {
     path: PathBuf,
-    entries: Mutex<HashMap<u64, Arc<Mutex<()>>>>,
+    entries: Mutex<HashMap<u64, Arc<Mutex<bool /* failed */>>>>,
 }
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct Response {
     query: Option<ClickhouseQuery>,
-    body: Bytes,
     headers: HashMap<String, String>,
     status: u16,
-    cached: bool,
     date: chrono::DateTime<chrono::Utc>,
 }
 impl Response {
-    fn write(self, filename: &Path) -> Result<(), CacheError> {
-        if self.body.len() as u64 > LIMIT_BYTES {
-            return Err(CacheError::TooLarge(self.body.len()));
-        }
-        let writer = std::fs::OpenOptions::new()
+    fn bincode_options() -> impl bincode::config::Options {
+        bincode::DefaultOptions::new()
+            .with_limit(1_000_000)
+            .allow_trailing_bytes()
+    }
+    async fn write_adapt(
+        mut request: PreparedRequest,
+        filename: &Path,
+        mut guard: tokio::sync::OwnedMutexGuard<bool>,
+    ) -> Result<axum::response::Response, Error> {
+        let query = request.take_query();
+        let resp = request.send().await?;
+
+        let filename = filename.to_owned();
+        let filename_tmp = filename.with_extension("tmp");
+        let mut writer = std::fs::OpenOptions::new()
             .create(true)
             .write(true)
             .truncate(true)
-            .open(filename)?;
-        let writer = std::io::BufWriter::new(writer);
-        let options = bincode::DefaultOptions::new().with_limit(LIMIT_BYTES);
-        if let Err(e) = options.serialize_into(writer, &self) {
-            let _ = std::fs::remove_file(filename);
-            return Err(e.into());
-        }
-        Ok(())
-    }
-    fn read(filename: &Path) -> Result<Self, CacheError> {
-        let options = bincode::DefaultOptions::new().with_limit(LIMIT_BYTES);
-        let reader = std::fs::File::open(filename)?;
-        let reader = std::io::BufReader::new(reader);
-        let mut r: Self = options.deserialize_from(reader)?;
-        r.cached = true;
-        Ok(r)
-    }
-    async fn from_response(
-        query: Option<ClickhouseQuery>,
-        resp: reqwest::Response,
-    ) -> Result<Self, ClickhouseError> {
-        Ok(Self {
+            .open(&filename_tmp)
+            .unwrap();
+        // Serialize header
+        let header = Self {
             status: resp.status().as_u16(),
             date: chrono::Utc::now(),
             query,
             headers: resp
                 .headers()
                 .into_iter()
+                .filter(|(k, _)| !k.as_str().starts_with("date"))
                 .filter_map(|(k, v)| Some((k.as_str().to_string(), v.to_str().ok()?.to_string())))
                 .collect(),
-            cached: false,
-            body: resp.bytes().await?,
-        })
-    }
-}
-impl TryFrom<Response> for http::Response<Body> {
-    type Error = CacheError;
-    fn try_from(value: Response) -> Result<Self, Self::Error> {
-        let mut resp = axum::http::Response::builder().status(value.status);
-        for (k, v) in value.headers {
-            if k.starts_with("x-clickhouse") {
-                resp = resp.header(k, v);
+        };
+        Self::bincode_options()
+            .serialize_into(&mut writer, &header)
+            .map_err(CacheError::Serialization)?;
+
+        let mut bw = tokio::io::BufWriter::new(tokio::fs::File::from(writer));
+        // Adapted response
+        let resp2 = header.builder().header("X-Cache", "MISS");
+        let body = resp.bytes_stream();
+
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<bytes::Bytes>();
+        // Writing task
+        tokio::task::spawn(async move {
+            let mut size = 0;
+            while let Some(rx) = rx.recv().await {
+                size += rx.len();
+                if size <= LIMIT_BYTES {
+                    bw.write_all(&rx).await?;
+                }
             }
+            if size > LIMIT_BYTES {
+                warn!(size, "Not caching a large response");
+                drop(bw);
+                *guard = true;
+                let _ = std::fs::remove_file(filename_tmp);
+            } else {
+                bw.flush().await?;
+                std::fs::rename(filename_tmp, filename)?;
+            }
+            // Remove processing mark
+            drop(guard);
+            Ok::<_, CacheError>(())
+        });
+        let body = axum::body::Body::from_stream(body.map(move |buf| {
+            let buf = buf.map_err(ClickhouseError::QueryFailure)?;
+            tx.send(buf.clone()).map_err(|_| CacheError::SendBuf)?;
+            Ok::<_, Error>(buf)
+        }));
+        Ok(resp2.body(body).map_err(CacheError::ConvertResponse)?)
+    }
+
+    fn builder(&self) -> http::response::Builder {
+        let mut resp2 = axum::http::Response::builder().status(self.status);
+        for (k, v) in &self.headers {
+            resp2 = resp2.header(k, v);
         }
-        resp = resp.header("X-Cache", if value.cached { "HIT" } else { "MISS" });
-        resp = resp.header("Age", (chrono::Utc::now() - value.date).num_seconds());
-        resp.body(Body::from(value.body))
+        resp2
+    }
+    #[allow(dead_code)]
+    fn read_header(filename: &Path) -> Result<Self, CacheError> {
+        let mut reader = std::fs::File::open(filename)?;
+        Ok(Self::bincode_options().deserialize_from(&mut reader)?)
+    }
+    async fn read(filename: &Path) -> Result<axum::response::Response, CacheError> {
+        let mut reader = std::fs::File::open(filename)?;
+        let r: Self = Self::bincode_options().deserialize_from(&mut reader)?;
+        let builder = r
+            .builder()
+            .header("X-Cache", "HIT")
+            .header("Age", (chrono::Utc::now() - r.date).num_seconds());
+        let reader = tokio::io::BufReader::new(tokio::fs::File::from(reader));
+        let reader = tokio_util::io::ReaderStream::new(reader);
+        builder
+            .body(axum::body::Body::from_stream(reader))
             .map_err(CacheError::ConvertResponse)
     }
 }
+
 impl Cache {
     pub fn init(path: &Path) -> Result<Self, Error> {
         info!("Initializing cache");
         std::fs::create_dir_all(path).map_err(CacheError::from)?;
-        Ok(Self {
+        let s = Self {
             path: path.into(),
             entries: Default::default(),
-        })
+        };
+        Ok(s)
+    }
+    #[allow(dead_code)]
+    fn list(&self) -> impl Iterator<Item = (Result<Response, CacheError>, PathBuf)> {
+        glob::glob(&self.path.join("*").to_string_lossy())
+            .unwrap()
+            .filter_map(|f| f.ok())
+            .map(|f| (Response::read_header(&f), f))
     }
     #[tracing::instrument(name = "cache", skip(self))]
     pub async fn process(
         &self,
-        mut request: PreparedRequest,
+        request: PreparedRequest,
     ) -> Result<axum::response::Response, Error> {
         let id = request.id;
         let entry = self.entries.lock().await.get(&id).cloned();
         if let Some(entry) = entry {
             info!("Already processing, waiting");
-            let _ = entry.lock().await;
+            let guard = entry.lock().await;
+            if *guard {
+                warn!("This query previously failed to cache from being too large. Returning directly");
+                return Ok(http::response::Response::from(request.send().await?).into_response());
+            }
         }
         // Not already processing
         let filename = self.path.join(id.to_string());
         if filename.exists() {
-            // Read from cache
             info!("Reading response from cache");
-            match Response::read(&filename).and_then(|r| r.try_into()) {
+            match Response::read(&filename).await {
                 Ok(r) => {
                     return Ok(r);
                 }
@@ -137,35 +190,10 @@ impl Cache {
         }
         // Process
         // Mark as processing
-        let mutex = Arc::<Mutex<()>>::default();
-        let guard = mutex.lock().await;
+        let mutex = Arc::<Mutex<_>>::default();
         self.entries.lock().await.insert(id, mutex.clone());
-        let query = request.take_query();
-        let resp = request.send().await?;
-        // Write to cache
-        let resp = match Response::from_response(query, resp).await {
-            Ok(r) => r,
-            Err(e) => {
-                self.entries.lock().await.remove(&id);
-                return Err(e.into());
-            }
-        };
-        if resp.status == StatusCode::OK.as_u16() {
-            let resp = resp.clone();
-            match tokio::task::spawn_blocking(move || resp.write(&filename)).await {
-                Ok(Ok(())) => {}
-                Ok(Err(e)) => {
-                    warn!("Writing to cache failed: {}", e);
-                }
-                Err(e) => {
-                    warn!("Writing to cache panicked: {}", e);
-                }
-            }
-        }
-        // Remove processing mark
-        self.entries.lock().await.remove(&id);
-        drop(guard);
-        // Return response
-        Ok(resp.try_into()?)
+        let guard = mutex.lock_owned().await;
+
+        Response::write_adapt(request, &filename, guard).await
     }
 }

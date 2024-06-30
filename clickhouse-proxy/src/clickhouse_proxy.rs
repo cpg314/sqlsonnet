@@ -112,7 +112,7 @@ struct State {
     cache: Option<Arc<cache::Cache>>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct ClickhouseQuery {
     query: String,
     params: BTreeMap<String, String>,
