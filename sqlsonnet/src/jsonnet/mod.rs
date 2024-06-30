@@ -1,18 +1,15 @@
 mod formatter;
 mod resolver;
 pub use formatter::Jsonnet;
-pub use resolver::ImportPaths;
+pub use resolver::{FsResolver, ImportResolver};
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use itertools::Itertools;
 use jrsonnet_evaluator::parser::SourcePath;
 use jrsonnet_gcmodule::Trace;
 use jrsonnet_stdlib::StateExt;
 
 use crate::error::JsonnetError;
-
-const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
 
 fn evaluate_snippet(
     filename: &str,
@@ -27,11 +24,11 @@ fn evaluate_snippet(
 /// Evaluate Jsonnet into JSON
 pub fn evaluate(
     jsonnet: &str,
-    import_paths: ImportPaths,
+    resolver: impl jrsonnet_evaluator::ImportResolver,
 ) -> Result<String, crate::error::JsonnetError> {
     let state = jrsonnet_evaluator::State::default();
     state.with_stdlib();
-    state.set_import_resolver(resolver::Resolver::new(import_paths));
+    state.set_import_resolver(resolver);
 
     let val = evaluate_snippet("input.jsonnet", jsonnet, &state)?;
     let format = Box::new(jrsonnet_evaluator::manifest::JsonFormat::cli(3));

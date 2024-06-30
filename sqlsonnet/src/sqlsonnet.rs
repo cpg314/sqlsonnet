@@ -1,5 +1,4 @@
 use std::io::IsTerminal;
-use std::path::Path;
 use std::str::FromStr;
 
 use clap::Parser;
@@ -72,13 +71,10 @@ impl Input {
             clap_stdin::Source::Arg(s) => s.clone(),
         }
     }
-    fn import_paths(&self) -> sqlsonnet::ImportPaths {
+    fn resolver(&self) -> sqlsonnet::FsResolver {
         match &self.0.source {
             clap_stdin::Source::Stdin => Default::default(),
-            clap_stdin::Source::Arg(s) => Path::new(s)
-                .parent()
-                .map(sqlsonnet::ImportPaths::from)
-                .unwrap_or_default(),
+            clap_stdin::Source::Arg(s) => sqlsonnet::FsResolver::from_filename(s),
         }
     }
 }
@@ -162,7 +158,7 @@ fn main_impl() -> Result<(), Error> {
             let contents = input.contents()?;
             info!("Converting Jsonnet file {} to SQL", filename);
 
-            let queries = Queries::from_jsonnet(&contents, input.import_paths())?;
+            let queries = Queries::from_jsonnet(&contents, input.resolver())?;
 
             let has = |l| display_format.iter().any(|l2| l2 == &l);
             // Display queries

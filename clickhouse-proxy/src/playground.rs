@@ -27,9 +27,9 @@ async fn playground_post(
     axum::extract::State(state): axum::extract::State<State>,
     request: String,
 ) -> Result<axum::Json<PlaygroundResponse>, Error> {
-    let library = state.library();
+    let resolver = state.resolver.clone();
     let sql = tokio::task::spawn_blocking(move || {
-        decode_query(request, library, false, Some(ROWS_LIMIT))
+        decode_query(request, resolver, false, Some(ROWS_LIMIT))
     })
     .await??;
     let resp = state
@@ -50,7 +50,7 @@ async fn playground_post(
 async fn playground(
     axum::extract::State(state): axum::extract::State<State>,
 ) -> axum::response::Html<String> {
-    let imports = state.library().imports();
+    let imports = state.resolver.as_ref().imports();
     let html = include_str!("playground.html")
         .replace("[IMPORTS]", &imports)
         .replace("[IMPORTS_ROWS]", &imports.lines().count().to_string());

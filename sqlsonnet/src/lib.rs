@@ -4,7 +4,7 @@ mod jsonnet;
 mod queries;
 mod sql_parse;
 mod to_sql;
-pub use jsonnet::{ImportPaths, Jsonnet};
+pub use jsonnet::{FsResolver, ImportResolver, Jsonnet};
 pub use queries::{Queries, Query};
 
 macro_rules! impl_conversions {
@@ -16,8 +16,8 @@ macro_rules! impl_conversions {
             pub fn from_sql(input: &str) -> Result<Self, Error> {
                 Ok(sql_parse::query_from_sql(input, $rule)?)
             }
-            pub fn from_jsonnet(input: &str, import_paths: ImportPaths) -> Result<Self, Error> {
-                let json = jsonnet::evaluate(input, import_paths)?;
+            pub fn from_jsonnet(input: &str, resolver: impl ImportResolver) -> Result<Self, Error> {
+                let json = jsonnet::evaluate(input, resolver.to_resolver())?;
                 Ok(serde_json::from_str(&json)
                     .map_err(|e| crate::error::JsonError::from(&json, e))?)
             }

@@ -1,6 +1,6 @@
 use pretty_assertions::assert_eq;
 
-use sqlsonnet::Queries;
+use sqlsonnet::{FsResolver, Queries};
 
 #[test]
 fn sql_roundtrip() -> anyhow::Result<()> {
@@ -20,7 +20,7 @@ fn sql_roundtrip() -> anyhow::Result<()> {
     println!("{}", jsonnet);
 
     // Jsonnet to queries
-    let queries2 = Queries::from_jsonnet(&jsonnet, Default::default())?;
+    let queries2 = Queries::from_jsonnet(&jsonnet, FsResolver::default())?;
     assert_eq!(queries, queries2);
 
     Ok(())

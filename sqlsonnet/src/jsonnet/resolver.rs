@@ -1,80 +1,141 @@
-// TODO: There might be an easier way of doing this...
+use std::path::Path;
+use std::sync::Arc;
+
+use itertools::Itertools;
+
 use super::*;
 
-#[derive(Trace)]
-pub struct Resolver {
-    inner: jrsonnet_evaluator::FileImportResolver,
-    utils: Vec<u8>,
-}
-impl Resolver {
-    pub fn new(paths: ImportPaths) -> Self {
-        Self {
-            inner: jrsonnet_evaluator::FileImportResolver::new(paths.0),
-            utils: include_bytes!("../../utils.libsonnet").into(),
+const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
+
+/// A simpler version of jrsonnet_evaluator::ImportResolver, so that we can
+/// easily implement it on Arc<T>.
+pub trait ImportResolver: Trace + Sized {
+    fn resolve(&self, from: &SourcePath, path: &str) -> Option<PathBuf>;
+    fn load(&self, resolved: &SourcePath) -> Result<Vec<u8>, std::io::Error>;
+    /// This adds the resolution of the embedded utils.libsonnet import.
+    fn to_resolver(self) -> impl jrsonnet_evaluator::ImportResolver {
+        ResolverWrapper {
+            inner: self,
+            utils: include_bytes!("../../utils.libsonnet").to_vec(),
         }
     }
 }
-impl jrsonnet_evaluator::ImportResolver for Resolver {
+impl<T: ImportResolver> ImportResolver for Arc<T> {
+    fn resolve(&self, from: &SourcePath, path: &str) -> Option<PathBuf> {
+        self.as_ref().resolve(from, path)
+    }
+    fn load(&self, resolved: &SourcePath) -> Result<Vec<u8>, std::io::Error> {
+        self.as_ref().load(resolved)
+    }
+}
+
+#[derive(Trace)]
+pub struct FsResolver {
+    search_paths: Vec<PathBuf>,
+}
+
+impl Default for FsResolver {
+    fn default() -> Self {
+        Self::new(vec![])
+    }
+}
+impl FsResolver {
+    pub fn from_filename(filename: impl AsRef<Path>) -> Self {
+        Self::new(
+            filename
+                .as_ref()
+                .parent()
+                .map(|p| p.to_owned())
+                .into_iter()
+                .collect(),
+        )
+    }
+    pub fn new(search_paths: Vec<PathBuf>) -> Self {
+        Self { search_paths }
+    }
+    fn paths(&self) -> impl Iterator<Item = PathBuf> + '_ {
+        self.search_paths
+            .iter()
+            .map(|f| glob::glob(f.join("*.libsonnet").to_str().unwrap()))
+            .filter_map(|glob| glob.ok())
+            .flatten()
+            .filter_map(|f| f.ok())
+    }
+    pub fn imports(&self) -> String {
+        self.paths()
+            .map(|f| {
+                (
+                    f.file_stem().unwrap().to_string_lossy().to_string(),
+                    f.file_name().unwrap().to_string_lossy().to_string(),
+                )
+            })
+            .chain(std::iter::once(("u".into(), UTILS_FILENAME.into())))
+            .map(|(a, b)| format!("local {} = import '{}';", a, b))
+            .join("\n")
+    }
+}
+impl ImportResolver for FsResolver {
+    fn resolve(&self, from: &SourcePath, path: &str) -> Option<PathBuf> {
+        // Search paths
+        let from = from.path().and_then(|p| p.parent());
+        if let Some(p) = self
+            .search_paths
+            .iter()
+            .map(|p| {
+                let mut p = p.clone();
+                if let Some(from) = from {
+                    p = p.join(from);
+                }
+                p.join(path)
+            })
+            .find(|p| p.exists())
+        {
+            return Some(p);
+        }
+        None
+    }
+    fn load(&self, resolved: &SourcePath) -> Result<Vec<u8>, std::io::Error> {
+        let path = resolved.path().unwrap();
+        std::fs::read(path)
+    }
+}
+#[derive(Trace)]
+struct ResolverWrapper<T: Trace + 'static> {
+    inner: T,
+    utils: Vec<u8>,
+}
+impl<T: ImportResolver + Trace + 'static> jrsonnet_evaluator::ImportResolver
+    for ResolverWrapper<T>
+{
     fn resolve_from(
         &self,
         from: &SourcePath,
         path: &str,
     ) -> jrsonnet_evaluator::Result<SourcePath> {
         if path == UTILS_FILENAME {
-            return Ok(SourcePath::new(jrsonnet_parser::SourceFile::new(
-                UTILS_FILENAME.into(),
-            )));
+            return Ok(SourcePath::new(jrsonnet_parser::SourceVirtual(path.into())));
         }
-        self.inner.resolve_from(from, path)
-    }
-    fn resolve_from_default(&self, path: &str) -> jrsonnet_evaluator::Result<SourcePath> {
-        self.inner.resolve_from_default(path)
-    }
-    fn resolve(&self, path: &Path) -> jrsonnet_evaluator::Result<SourcePath> {
-        self.inner.resolve(path)
+        if let Some(path) = self.inner.resolve(from, path) {
+            return Ok(SourcePath::new(jrsonnet_parser::SourceFile::new(path)));
+        }
+        Err(jrsonnet_evaluator::error::ErrorKind::ImportFileNotFound(
+            from.clone(),
+            path.to_string(),
+        )
+        .into())
     }
     fn load_file_contents(&self, resolved: &SourcePath) -> jrsonnet_evaluator::Result<Vec<u8>> {
         if resolved
-            .path()
-            .map_or(false, |p| p == Path::new(UTILS_FILENAME))
+            .downcast_ref::<jrsonnet_parser::SourceVirtual>()
+            .map_or(false, |p| p.0 == *UTILS_FILENAME)
         {
             return Ok(self.utils.clone());
         }
-        self.inner.load_file_contents(resolved)
+        self.inner
+            .load(resolved)
+            .map_err(|e| jrsonnet_evaluator::error::ErrorKind::ImportIo(e.to_string()).into())
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct ImportPaths(Vec<PathBuf>);
-impl ImportPaths {
-    // Produces statements of the form
-    // local file_stem = import 'path.libsonnet';
-    pub fn imports(&self) -> String {
-        self.0
-            .iter()
-            .map(|f| glob::glob(f.join("*.libsonnet").to_str().unwrap()))
-            .filter_map(|glob| glob.ok())
-            .flatten()
-            .filter_map(|f| f.ok())
-            .map(|f| {
-                format!(
-                    "local {} = import '{}';",
-                    f.file_stem().unwrap().to_string_lossy(),
-                    f.file_name().unwrap().to_string_lossy()
-                )
-            })
-            .chain(std::iter::once(format!(
-                "local u = import '{}';",
-                UTILS_FILENAME
-            )))
-            .join("\n")
-    }
-}
-impl<P: Into<PathBuf>> From<P> for ImportPaths {
-    fn from(source: P) -> Self {
-        Self(vec![source.into()])
     }
 }

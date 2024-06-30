@@ -16,7 +16,7 @@ use metrics_exporter_prometheus::PrometheusBuilder;
 use serde::{Deserialize, Serialize};
 use tracing::*;
 
-use sqlsonnet::{ImportPaths, Queries, Query};
+use sqlsonnet::{FsResolver, Queries, Query};
 
 /// Reverse proxies a Clickhouse HTTP server, transforming Jsonnet or JSON queries into SQL.
 /// WARN: For now, the server assumes that the client are trusted. For example, they might be able
@@ -52,18 +52,18 @@ async fn main() -> anyhow::Result<()> {
 
 fn decode_query(
     request: String,
-    library: ImportPaths,
+    resolver: Arc<FsResolver>,
     compact: bool,
     limit: Option<usize>,
 ) -> Result<String, Error> {
     // Automatically add the imports
-    let request = [library.imports(), request].join("\n");
+    let request = [resolver.as_ref().imports(), request].join("\n");
     // We could also use OneOrMany from serde_with, but this seems to break error reporting.
     let mut query = {
-        match Query::from_jsonnet(&request, library.clone()) {
+        match Query::from_jsonnet(&request, resolver.clone()) {
             Ok(r) => Ok(r),
             Err(e) => {
-                if let Ok(queries) = Queries::from_jsonnet(&request, library) {
+                if let Ok(queries) = Queries::from_jsonnet(&request, resolver) {
                     if queries.len() == 1 {
                         Ok(queries.into_iter().next().unwrap())
                     } else {
@@ -101,8 +101,8 @@ async fn handle_query(
     let sql = if request.starts_with("SELECT") {
         request
     } else {
-        let library = state.library();
-        tokio::task::spawn_blocking(move || decode_query(request, library, true, None)).await??
+        let resolver = state.resolver.clone();
+        tokio::task::spawn_blocking(move || decode_query(request, resolver, true, None)).await??
     };
     state
         .send_query(ClickhouseQuery { query: sql, params })
@@ -113,16 +113,8 @@ async fn handle_query(
 struct State {
     client: reqwest::Client,
     args: Arc<Flags>,
+    resolver: Arc<FsResolver>,
     cache: Option<Arc<cache::Cache>>,
-}
-impl State {
-    fn library(&self) -> ImportPaths {
-        self.args
-            .library
-            .as_ref()
-            .map(|l| l.into())
-            .unwrap_or_default()
-    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Hash)]
@@ -163,6 +155,10 @@ impl State {
     fn new(args: &Flags) -> Result<Self, Error> {
         Ok(Self {
             client: reqwest::Client::new(),
+            resolver: sqlsonnet::FsResolver::new(
+                args.library.clone().map(|p| vec![p]).unwrap_or_default(),
+            )
+            .into(),
             cache: if let Some(path) = &args.cache {
                 Some(Arc::new(cache::Cache::init(path)?))
             } else {
