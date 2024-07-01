@@ -15,3 +15,6 @@ contents:
   - src: "./target-cross/$ARCH/release/sqlsonnet"
     dst: /usr/local/bin/sqlsonnet
     expand: true
+  - src: "./target-cross/$ARCH/release/sqlsonnet_clickhouse_proxy"
+    dst: /usr/local/bin/sqlsonnet_clickhouse_proxy
+    expand: true

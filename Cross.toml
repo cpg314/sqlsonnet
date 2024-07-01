@@ -1,0 +1,8 @@
+[target.x86_64-unknown-linux-gnu]
+# A newer gcc version is needed to compile aws-lc-sys
+pre-build = ["apt update", "apt install -y gcc-10"]
+
+[build.env]
+passthrough = [
+  "CC=gcc-10"
+]

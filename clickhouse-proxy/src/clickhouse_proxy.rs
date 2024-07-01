@@ -60,7 +60,6 @@ fn decode_query(
     limit: Option<usize>,
 ) -> Result<String, Error> {
     let request = [state.prelude()?, request].join("\n");
-    println!("{}", request);
     let resolver = state.resolver;
     // We could also use OneOrMany from serde_with, but this seems to break error reporting.
     let mut query = {
@@ -174,7 +173,7 @@ impl State {
 
     fn prelude(&self) -> Result<String, Error> {
         Ok(format!(
-            "{}{}",
+            "{}\n{}",
             sqlsonnet::import("u", sqlsonnet::UTILS_FILENAME),
             self.args
                 .prelude

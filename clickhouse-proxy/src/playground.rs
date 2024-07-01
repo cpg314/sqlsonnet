@@ -51,8 +51,9 @@ async fn playground(
     axum::extract::State(state): axum::extract::State<State>,
 ) -> Result<axum::response::Html<String>, Error> {
     let prelude = state.prelude()?;
+    let prelude = prelude.trim();
     let html = include_str!("playground.html")
-        .replace("[PRELUDE]", &prelude)
+        .replace("[PRELUDE]", prelude)
         .replace("[PRELUDE_ROWS]", &prelude.lines().count().to_string());
     Ok(axum::response::Html(html))
 }
