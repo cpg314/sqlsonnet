@@ -1,7 +1,7 @@
 mod error;
 pub use error::Error;
 mod jsonnet;
-mod queries;
+pub mod queries;
 mod sql_parse;
 mod to_sql;
 pub use jsonnet::{import, FsResolver, ImportResolver, Jsonnet, UTILS_FILENAME};

@@ -9,6 +9,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use anyhow::Context;
 use axum::response::IntoResponse;
 use clap::Parser;
 use itertools::Itertools;
@@ -235,7 +236,16 @@ async fn main_impl() -> anyhow::Result<()> {
     sqlsonnet::setup_logging();
 
     let builder = PrometheusBuilder::new();
-    let handle = builder.install_recorder()?;
+    let handle = builder
+        .install_recorder()
+        .context("Failed to setup Prometheus metrics")?;
+
+    if let Some(library) = &args.library {
+        std::fs::create_dir_all(library).context("Failed to create library")?;
+    }
+    if let Some(prelude) = &args.prelude {
+        anyhow::ensure!(prelude.is_file(), "Prelude {:?} not found", prelude);
+    }
 
     info!("Testing connection with Clickhouse");
     let state = State::new(&args)?;
