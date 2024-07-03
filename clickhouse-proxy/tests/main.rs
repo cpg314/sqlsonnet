@@ -21,28 +21,21 @@ async fn main() -> anyhow::Result<()> {
         axum::serve(listener, fake_ch).await.unwrap();
     });
 
-    // Start our proxy server
-    let binary = std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("sqlsonnet_clickhouse_proxy");
+    // Start proxy
     let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await?;
     let port = listener.local_addr()?.port();
     drop(listener);
-    let _handle = tokio::process::Command::new(binary)
-        .args([
-            "--port",
-            &port.to_string(),
-            "--username",
-            "default",
-            "--url",
-            &("http://".to_string() + &fake_chaddr.to_string()),
-        ])
-        .kill_on_drop(true)
-        .spawn()?;
+    let cache = tempfile::tempdir()?;
+    let _server = tokio::spawn(clickhouse_proxy::main_impl(clickhouse_proxy::Flags {
+        url: reqwest::Url::parse(&format!("http://{}", fake_chaddr))?,
+        username: "default".into(),
+        password: None,
+        cache: Some(cache.path().into()),
+        library: None,
+        prelude: None,
+        port,
+    }));
+
     // Wait until the server is up
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
@@ -52,15 +45,16 @@ async fn main() -> anyhow::Result<()> {
         client: reqwest::Client,
     }
     impl Client {
-        async fn send(&self, query: &str) -> reqwest::Result<String> {
-            self.client
+        async fn send(&self, query: &str) -> reqwest::Result<(String, reqwest::header::HeaderMap)> {
+            let resp = self
+                .client
                 .post(self.url.clone())
                 .body(query.to_owned())
                 .send()
                 .await?
-                .error_for_status()?
-                .text()
-                .await
+                .error_for_status()?;
+            let headers = resp.headers().clone();
+            Ok((resp.text().await?, headers))
         }
     }
     let mut url = reqwest::Url::parse("http://localhost")?;
@@ -71,12 +65,18 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Sending SQL
-    assert_eq!(client.send("SELECT 1+1").await?, "2");
+    assert_eq!(client.send("SELECT 1+1").await?.0, "2");
 
-    // Sending Jsonnet
     let query = sqlsonnet::Query::from_sql("SELECT count(*) AS c FROM table")?;
-    client.send(&query.as_jsonnet().to_string()).await?;
-    assert_eq!(last_query.lock().await.as_str(), query.to_sql(true));
+    for i in 0..2 {
+        // Sending Jsonnet
+        let headers = client.send(&query.as_jsonnet().to_string()).await?.1;
+        assert_eq!(
+            headers.get("X-Cache").unwrap().to_str()?,
+            if i == 0 { "MISS" } else { "HIT" }
+        );
+        assert_eq!(last_query.lock().await.as_str(), query.to_sql(true));
+    }
 
     // Using the standard library
     client

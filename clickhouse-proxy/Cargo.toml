@@ -28,3 +28,4 @@ glob.workspace = true
 uuid = { version = "1.9.1", features = ["v4"] }
 metrics = "0.23.0"
 metrics-exporter-prometheus = "0.15.1"
+tempfile = "3.10.1"
