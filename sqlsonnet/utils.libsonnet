@@ -18,5 +18,6 @@
   // expr AS as
   as(expr, as): { expr: expr, alias: as },
   // Functions
-  count(expr='*', as='c'): self.as(std.format('count(%s)', expr), as),
+  fn(name, params): { fn: name, params: params },
+  count(expr='*', as='c'): self.as(self.fn('count', [expr]), as),
 }
