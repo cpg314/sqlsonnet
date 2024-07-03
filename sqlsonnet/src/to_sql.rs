@@ -104,6 +104,16 @@ impl ToSql for Operator {
         write!(f, "{}", self.0)
     }
 }
+
+fn parenthesized_expr(f: &mut IndentedPrinter<'_>, expr: &Expr) -> fmt::Result {
+    if expr.is_raw() {
+        return expr.to_sql(f);
+    }
+    write!(f, "(")?;
+    expr.to_sql(f)?;
+    write!(f, ")")
+}
+
 impl ToSql for Expr {
     fn to_sql(&self, f: &mut IndentedPrinter<'_>) -> fmt::Result {
         match self {
@@ -116,15 +126,18 @@ impl ToSql for Expr {
                 write!(f, " AS {}", alias)
             }
             Expr::OperatorSeq(q1, v) => {
-                q1.to_sql(f)?;
+                // TODO Use op.linebreak?
+                parenthesized_expr(f, q1)?;
                 for (op, q) in v {
+                    write!(f, " ")?;
                     op.to_sql(f)?;
-                    q.to_sql(f)?;
+                    write!(f, " ")?;
+                    parenthesized_expr(f, q)?;
                 }
                 Ok(())
             }
             Expr::Operator(q1, op, q2) => {
-                q1.to_sql(f)?;
+                parenthesized_expr(f, q1)?;
                 if op.linebreak() {
                     writeln!(f)?;
                 } else {
@@ -132,12 +145,11 @@ impl ToSql for Expr {
                 }
                 op.to_sql(f)?;
                 write!(f, " ")?;
-                q2.to_sql(f)
+                parenthesized_expr(f, q2)
             }
             Expr::Subquery(s) => {
-                writeln!(f, "(")?;
-                ToSql::to_sql(s.as_ref(), &mut f.indented())?;
-                write!(f, ")")
+                writeln!(f)?;
+                ToSql::to_sql(s.as_ref(), &mut f.indented())
             }
             Expr::FunctionCall {
                 r#fn: function,

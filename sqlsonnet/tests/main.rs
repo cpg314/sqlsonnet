@@ -36,3 +36,14 @@ fn function_call() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn parenthesization() -> anyhow::Result<()> {
+    let query = Query::from_jsonnet(
+        "{ select: { fields: [ [3, '*', [1, [ ['+', 2]] ]]], from: 'a' } }",
+        FsResolver::default(),
+    )?;
+    assert_eq!(query.to_sql(true), "SELECT 3 * (1 + 2) FROM a ");
+
+    Ok(())
+}

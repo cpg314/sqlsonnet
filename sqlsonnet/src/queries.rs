@@ -93,6 +93,9 @@ pub mod expr {
     }
 
     impl Expr {
+        pub fn is_raw(&self) -> bool {
+            matches!(self, Self::Raw(_) | Self::RawBool(_) | Self::RawInteger(_))
+        }
         pub fn operator(self, op: Operator, right: Expr) -> Self {
             Self::Operator(Box::new(self), op, Box::new(right))
         }
