@@ -44,3 +44,6 @@ ORDER BY
   b DESC
 LIMIT 100
 ;
+SELECT
+  a
+;

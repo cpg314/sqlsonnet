@@ -179,7 +179,7 @@ impl ToSql for Query {
 impl ToSql for from::From {
     fn to_sql(&self, f: &mut IndentedPrinter<'_>) -> fmt::Result {
         match self {
-            Self::Unset => unreachable!(),
+            Self::Unset => Ok(()),
             Self::Table(s) => s.to_sql(f),
             Self::AliasedTable { table, alias } => {
                 write!(f, "{} AS {}", table, alias)
@@ -245,8 +245,11 @@ impl ToSql for select::Query {
     fn to_sql(&self, f: &mut IndentedPrinter) -> fmt::Result {
         writeln!(f, "SELECT")?;
         self.fields.to_sql(&mut f.indented())?;
-        writeln!(f)?;
-        write!(f, "FROM ")?;
+
+        if !matches!(self.from, from::From::Unset) {
+            writeln!(f)?;
+            write!(f, "FROM ")?;
+        }
         self.from.to_sql(f)?;
         for join in &self.joins {
             writeln!(f)?;

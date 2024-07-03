@@ -79,8 +79,8 @@ limit = { LIMIT ~ #limit = number }
 fields = { exprs }
 
 select = {
-    SELECT ~ fields ~ FROM ~ table_or_subquery ~ join* ~ where? ~ group_by? ~ having? ~ order_by? ~ limit? ~ ";"?
+    SELECT ~ fields ~ (FROM ~ table_or_subquery)? ~ join* ~ where? ~ group_by? ~ having? ~ order_by? ~ limit? ~ ";"?
 }
 
 query   = { SOI ~ select ~ EOI }
-queries = { SOI ~ select ~ (";" ~ select)* ~ ";"? ~ EOI }
+queries = { SOI ~ select ~ select* ~ EOI }
