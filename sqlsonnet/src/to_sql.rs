@@ -179,7 +179,6 @@ impl ToSql for Query {
 impl ToSql for from::From {
     fn to_sql(&self, f: &mut IndentedPrinter<'_>) -> fmt::Result {
         match self {
-            Self::Unset => Ok(()),
             Self::Table(s) => s.to_sql(f),
             Self::AliasedTable { table, alias } => {
                 write!(f, "{} AS {}", table, alias)
@@ -246,11 +245,11 @@ impl ToSql for select::Query {
         writeln!(f, "SELECT")?;
         self.fields.to_sql(&mut f.indented())?;
 
-        if !matches!(self.from, from::From::Unset) {
+        if let Some(from) = &self.from {
             writeln!(f)?;
             write!(f, "FROM ")?;
+            from.to_sql(f)?;
         }
-        self.from.to_sql(f)?;
         for join in &self.joins {
             writeln!(f)?;
             join.to_sql(f)?;
@@ -274,6 +273,9 @@ impl ToSql for select::Query {
         if let Some(limit) = &self.limit {
             write!(f, "\nLIMIT {}", limit)?;
         }
-        writeln!(f)
+        if !f.compact {
+            writeln!(f)?;
+        }
+        Ok(())
     }
 }

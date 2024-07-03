@@ -238,7 +238,7 @@ impl FromParsed for queries::select::Query {
                     query.fields = FromParsed::parse(p.into_inner().next().unwrap())?;
                 }
                 Rule::table_or_subquery => {
-                    query.from = FromParsed::parse(p)?;
+                    query.from = Some(FromParsed::parse(p)?);
                 }
                 Rule::limit => {
                     query.limit = Some(

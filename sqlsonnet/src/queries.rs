@@ -125,7 +125,7 @@ pub enum Query {
 
 pub mod from {
     use super::*;
-    #[derive(Deserialize, Serialize, Default, PartialEq, Eq, Debug)]
+    #[derive(Deserialize, Serialize, PartialEq, Eq, Debug)]
     #[serde(deny_unknown_fields, untagged)]
     pub enum From {
         Table(String),
@@ -140,8 +140,6 @@ pub mod from {
             #[serde(rename = "as")]
             alias: Option<String>,
         },
-        #[default]
-        Unset,
     }
     impl From {
         pub fn with_alias(self, alias: Option<String>) -> Self {
@@ -155,7 +153,6 @@ pub mod from {
                     query,
                     alias: Some(alias),
                 },
-                Self::Unset => From::Unset,
             }
         }
     }
@@ -216,7 +213,7 @@ pub mod select {
     pub struct Query {
         #[serde(skip_serializing_if = "ExprList::is_empty")]
         pub fields: ExprList,
-        pub from: from::From,
+        pub from: Option<from::From>,
         #[serde(rename = "where")]
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub where_: Option<Expr>,

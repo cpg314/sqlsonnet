@@ -35,17 +35,16 @@ fn run_query(q: &str) -> anyhow::Result<Query> {
 
 #[test]
 fn function_call() -> anyhow::Result<()> {
-    let query = run_query("{ select: { fields: [ u.fn('test', [1, 2]) ], from: 'a' } }")?;
-    assert_eq!(query.to_sql(true), "SELECT test(1, 2) FROM a ");
+    let query = run_query("{ select: { fields: [ u.fn('test', [1, 2]) ] } }")?;
+    assert_eq!(query.to_sql(true), "SELECT test(1, 2)");
 
     Ok(())
 }
 
 #[test]
 fn parenthesization() -> anyhow::Result<()> {
-    let query =
-        run_query("{ select: { fields: [ u.op('*', [3, u.op('+', [1, 2])]) ] , from: 'a' } }")?;
-    assert_eq!(query.to_sql(true), "SELECT 3 * (1 + 2) FROM a ");
+    let query = run_query("{ select: { fields: [ u.op('*', [3, u.op('+', [1, 2])]) ] } }")?;
+    assert_eq!(query.to_sql(true), "SELECT 3 * (1 + 2)");
 
     Ok(())
 }
