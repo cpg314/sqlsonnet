@@ -7,7 +7,7 @@ use tracing::*;
 pub fn add_layer(router: axum::Router) -> axum::Router {
     router.layer(tower_http::trace::TraceLayer::new_for_http()
                 .make_span_with(|request: &axum::http::Request<_>| {
-let id = uuid::Uuid::new_v4();
+                    let id = uuid::Uuid::new_v4();
                     let path = request
                         .extensions()
                         .get::<axum::extract::MatchedPath>()

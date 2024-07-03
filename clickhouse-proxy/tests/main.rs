@@ -33,6 +33,7 @@ async fn main() -> anyhow::Result<()> {
         cache: Some(cache.path().into()),
         library: None,
         prelude: None,
+        shares: None,
         port,
     }));
 

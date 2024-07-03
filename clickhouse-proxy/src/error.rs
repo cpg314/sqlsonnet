@@ -21,7 +21,20 @@ pub enum Error {
     ConvertBody(axum::Error),
     #[error("Failed to read prelude {0}: {1}")]
     Prelude(PathBuf, std::io::Error),
+    #[error(transparent)]
+    Sharing(#[from] SharingError),
 }
+
+#[derive(thiserror::Error, Debug)]
+pub enum SharingError {
+    #[error("Not enabled")]
+    NotEnabled,
+    #[error("IO error: {0}")]
+    IO(#[from] std::io::Error),
+    #[error("Invalid UUID: {0}")]
+    Uuid(#[from] uuid::Error),
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum ClickhouseError {
     #[error("Connection error {0} {1:?}")]
@@ -36,5 +49,15 @@ impl axum::response::IntoResponse for Error {
             _ => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
         };
         (code, self.to_string()).into_response()
+    }
+}
+
+impl axum::response::IntoResponse for SharingError {
+    fn into_response(self) -> Response {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            self.to_string(),
+        )
+            .into_response()
     }
 }

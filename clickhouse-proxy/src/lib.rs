@@ -38,6 +38,9 @@ pub struct Flags {
     /// Folder with Jsonnet library files
     #[clap(long)]
     pub library: Option<PathBuf>,
+    /// Folder with shared snippets
+    #[clap(long)]
+    pub shares: Option<PathBuf>,
     /// Prepended to all requests
     #[clap(long)]
     pub prelude: Option<PathBuf>,
@@ -93,7 +96,7 @@ async fn handle_query(
         .filter(|l| !l.is_empty())
         .join(" ");
     info!(request = request_log, "Handling query");
-    let sql = if request.starts_with("SELECT") {
+    let sql = if request.to_lowercase().starts_with("select") {
         request
     } else {
         let state = state.clone();
