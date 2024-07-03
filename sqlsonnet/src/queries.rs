@@ -69,6 +69,7 @@ pub mod expr {
     #[serde(deny_unknown_fields, untagged)]
     pub enum Expr {
         Raw(String),
+        RawBool(bool),
         RawInteger(i64),
         RawFloat(FloatEq),
         // [expr, op, [expr]]

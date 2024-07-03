@@ -109,6 +109,7 @@ impl ToSql for Expr {
         match self {
             Expr::Raw(s) => write!(f, "{}", s),
             Expr::RawInteger(s) => write!(f, "{}", s),
+            Expr::RawBool(s) => write!(f, "{:?}", s),
             Expr::RawFloat(s) => write!(f, "{}", s),
             Expr::Aliased { expr, alias } => {
                 expr.to_sql(f)?;
