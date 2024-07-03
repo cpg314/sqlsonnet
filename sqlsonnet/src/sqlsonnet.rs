@@ -156,8 +156,10 @@ fn main_impl() -> Result<(), Error> {
         } => {
             let filename = input.filename();
             let contents = input.contents()?;
+            let contents = sqlsonnet::import_utils() + &contents;
             info!("Converting Jsonnet file {} to SQL", filename);
 
+            // TODO: Support passing a single query.
             let queries = Queries::from_jsonnet(&contents, input.resolver())?;
 
             let has = |l| display_format.iter().any(|l2| l2 == &l);

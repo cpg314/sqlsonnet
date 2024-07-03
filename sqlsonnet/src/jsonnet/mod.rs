@@ -10,8 +10,11 @@ use jrsonnet_gcmodule::Trace;
 
 use crate::error::JsonnetError;
 
-pub const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
+const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
 
+pub fn import_utils() -> String {
+    import("u", UTILS_FILENAME)
+}
 pub fn import(variable: &str, filename: &str) -> String {
     format!("local {} = import '{}';", variable, filename)
 }

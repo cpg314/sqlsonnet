@@ -166,7 +166,7 @@ impl State {
     fn prelude(&self) -> Result<String, Error> {
         Ok(format!(
             "{}\n{}",
-            sqlsonnet::import("u", sqlsonnet::UTILS_FILENAME),
+            sqlsonnet::import_utils(),
             self.args
                 .prelude
                 .as_ref()

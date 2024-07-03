@@ -4,7 +4,7 @@ mod jsonnet;
 pub mod queries;
 mod sql_parse;
 mod to_sql;
-pub use jsonnet::{import, FsResolver, ImportResolver, Jsonnet, UTILS_FILENAME};
+pub use jsonnet::{import_utils, FsResolver, ImportResolver, Jsonnet};
 pub use queries::{Queries, Query};
 
 macro_rules! impl_conversions {
