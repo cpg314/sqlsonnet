@@ -76,15 +76,20 @@ impl ToSql for Queries {
         Ok(())
     }
 }
+
+fn to_sql_list<T: ToSql>(x: &[T], f: &mut IndentedPrinter<'_>, separator: &str) -> fmt::Result {
+    for (i, xx) in x.iter().enumerate() {
+        xx.to_sql(f)?;
+        if i != x.len() - 1 {
+            write!(f, "{}", separator)?;
+        }
+    }
+    Ok(())
+}
+
 impl<T: ToSql> ToSql for Vec<T> {
     fn to_sql(&self, f: &mut IndentedPrinter<'_>) -> fmt::Result {
-        for (i, x) in self.iter().enumerate() {
-            x.to_sql(f)?;
-            if i != self.len() - 1 {
-                writeln!(f, ",")?;
-            }
-        }
-        Ok(())
+        to_sql_list(self, f, ",\n")
     }
 }
 
@@ -131,6 +136,14 @@ impl ToSql for Expr {
             Expr::Subquery(s) => {
                 writeln!(f, "(")?;
                 ToSql::to_sql(s.as_ref(), &mut f.indented())?;
+                write!(f, ")")
+            }
+            Expr::FunctionCall {
+                r#fn: function,
+                params,
+            } => {
+                write!(f, "{}(", function)?;
+                to_sql_list(&params.0, f, ", ")?;
                 write!(f, ")")
             }
         }

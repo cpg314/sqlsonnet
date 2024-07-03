@@ -76,6 +76,7 @@ pub mod expr {
         // [expr, [[op, expr], ...]]
         OperatorSeq(Box<Expr>, Vec<(Operator, Box<Expr>)>),
         Subquery(Box<Query>),
+        FunctionCall { r#fn: String, params: ExprList },
         Aliased { expr: Box<Expr>, alias: String },
     }
     impl From<&str> for Expr {

@@ -1,6 +1,6 @@
 use pretty_assertions::assert_eq;
 
-use sqlsonnet::{FsResolver, Queries};
+use sqlsonnet::{FsResolver, Queries, Query};
 
 #[test]
 fn sql_roundtrip() -> anyhow::Result<()> {
@@ -22,6 +22,17 @@ fn sql_roundtrip() -> anyhow::Result<()> {
     // Jsonnet to queries
     let queries2 = Queries::from_jsonnet(&jsonnet, FsResolver::default())?;
     assert_eq!(queries, queries2);
+
+    Ok(())
+}
+
+#[test]
+fn function_call() -> anyhow::Result<()> {
+    let query = Query::from_jsonnet(
+        "{ select: { fields: [{ fn: 'test', params: [1, 2] }], from: 'a' } }",
+        FsResolver::default(),
+    )?;
+    assert_eq!(query.to_sql(true), "SELECT test(1, 2) FROM a ");
 
     Ok(())
 }
