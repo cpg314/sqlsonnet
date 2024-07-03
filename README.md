@@ -56,7 +56,7 @@ Options:
           Display the converted SQL, the intermediary Json, or the original Jsonnet [default: sql] [possible values: sql, jsonnet, json]
 ```
 
-The [embedded utility functions](sqlsonnet/utils.libsonnet) can be imported with
+The [embedded utility functions](sqlsonnet/utils.libsonnet) are automatically imported as
 
 ```jsonnet
 local u = import "sqlsonnet.libsonnet";

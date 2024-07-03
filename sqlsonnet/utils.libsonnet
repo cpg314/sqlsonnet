@@ -1,9 +1,9 @@
 // Utilities embedded in sqlsonnet. Use with
 // local u = import 'utils.libsonnet';
 {
-
   op(operator, l): if std.length(l) == 1 then l[0] else [l[0], operator, self.and(l[1:])],
   select(x): { select: x },
+  where_and(expr): { where: $.and([expr] + (if 'where' in super then [super.where] else [])) },
   // Operators
   and(l): self.op('AND', l),
   or(l): self.op('OR', l),
