@@ -57,23 +57,13 @@ fn decode_query(
 ) -> Result<String, Error> {
     let request = [state.prelude()?, request].join("\n");
     let resolver = state.resolver;
-    // We could also use OneOrMany from serde_with, but this seems to break error reporting.
-    let mut query = {
-        match Query::from_jsonnet(&request, resolver.clone()) {
-            Ok(r) => Ok(r),
-            Err(e) => {
-                if let Ok(queries) = Queries::from_jsonnet(&request, resolver) {
-                    if queries.len() == 1 {
-                        Ok(queries.into_iter().next().unwrap())
-                    } else {
-                        Err(Error::MultipleQueries(queries.len()))
-                    }
-                } else {
-                    Err(e.into())
-                }
-            }
-        }
-    }?;
+
+    let queries = Queries::from_jsonnet(&request, resolver)?;
+    let mut query = if queries.len() == 1 {
+        queries.into_iter().next().unwrap()
+    } else {
+        return Err(Error::MultipleQueries(queries.len()));
+    };
     if let Some(limit) = limit {
         match &mut query {
             Query::Select(query) => query.limit = Some(limit),

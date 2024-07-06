@@ -2,12 +2,58 @@
 pub use expr::*;
 
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
+use serde::{de::Error, Deserialize, Serialize};
 
 /// A set of SQL queries
-#[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
+#[derive(Serialize, Debug, Default, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Queries(Vec<Query>);
+
+// Supports deserializing Queries from Query while keeping good error reporting.
+struct Visitor(Queries);
+impl<'de> serde::de::Visitor<'de> for Visitor {
+    type Value = Queries;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "Expected one or multiple queries")
+    }
+    fn visit_map<A>(mut self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::MapAccess<'de>,
+    {
+        loop {
+            let Some(key) = map.next_key::<&'de str>()? else {
+                break;
+            };
+            if key == "select" {
+                let value = map.next_value::<select::Query>()?;
+                self.0 .0.push(Query::Select(value));
+            } else {
+                return Err(A::Error::custom(format!("Unsupported query type {}", key)));
+            }
+        }
+        Ok(self.0)
+    }
+    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        while let Some(x) = seq.next_element::<Query>()? {
+            self.0 .0.push(x);
+        }
+        Ok(self.0)
+    }
+}
+impl<'de> Deserialize<'de> for Queries {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let visitor = Visitor(Default::default());
+        deserializer.deserialize_any(visitor)
+    }
+}
+
 impl Queries {
     pub fn len(&self) -> usize {
         self.0.len()

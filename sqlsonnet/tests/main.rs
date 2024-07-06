@@ -26,12 +26,19 @@ fn sql_roundtrip() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn run_query(q: &str) -> anyhow::Result<Query> {
-    Ok(Query::from_jsonnet(
-        &format!("{} {}", sqlsonnet::import_utils(), q),
-        FsResolver::default(),
-    )?)
+// TODO: This would be simpler with a trait on Query/Queries.
+macro_rules! run_impl {
+    ($i: ident, $t:ty) => {
+        fn $i(q: &str) -> anyhow::Result<$t> {
+            Ok(<$t>::from_jsonnet(
+                &format!("{} {}", sqlsonnet::import_utils(), q),
+                FsResolver::default(),
+            )?)
+        }
+    };
 }
+run_impl!(run_query, Query);
+run_impl!(run_queries, Queries);
 
 #[test]
 fn function_call() -> anyhow::Result<()> {
@@ -51,13 +58,16 @@ fn parenthesization() -> anyhow::Result<()> {
 
 #[test]
 fn examples() -> anyhow::Result<()> {
-    Queries::from_jsonnet(
-        &format!(
-            "{} {}",
-            sqlsonnet::import_utils(),
-            include_str!("example.jsonnet")
-        ),
-        FsResolver::default(),
-    )?;
+    run_queries(include_str!("example.jsonnet"))?;
+    Ok(())
+}
+
+// Deserialize Queries from a Query.
+#[test]
+fn queries_single() -> anyhow::Result<()> {
+    let s = "{ select: { fields: [1] } }";
+    let queries = run_queries(s)?;
+    let query = run_query(s)?;
+    assert_eq!(queries, vec![query].into());
     Ok(())
 }
