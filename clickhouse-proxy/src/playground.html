@@ -79,9 +79,7 @@
             <textarea class="form-control" rows="[PRELUDE_ROWS]" disabled>
 [PRELUDE]</textarea
             >
-            <textarea id="jsonnet">
-[INITIAL]
-            </textarea>
+            <textarea id="jsonnet">[INITIAL]</textarea>
             <div class="form-text">
               A return limit of 20 rows is automatically added. Type Control +
               Enter to submit.
@@ -109,55 +107,62 @@
       </div>
     </div>
     <script>
-     // TODO: Use a recent version of CodeMirror
-     var editor = CodeMirror.fromTextArea(document.getElementById("jsonnet"), {
-       mode: { name: "jsonnet" },
-       lineNumbers: true,
-       indentUnit: 2,
-       matchBrackets: true,
-       lineWrapping: true,
-     });
-     var editor_sql = CodeMirror.fromTextArea(document.getElementById("sql"), {
-       mode: { name: "sql" },
-       lineNumbers: true,
-       indentUnit: 2,
-       lineWrapping: true,
-       readOnly: true,
-       viewportMargin: Infinity,
-     });
-     $(document).on("keydown", function (e) {
-       if ((event.keyCode == 10 || event.keyCode == 13) && event.ctrlKey) {
+     $(document).ready(function() {
+         // TODO: Use a recent version of CodeMirror
+         var editor = CodeMirror.fromTextArea(document.getElementById("jsonnet"), {
+             mode: { name: "jsonnet" },
+             lineNumbers: true,
+             indentUnit: 2,
+             matchBrackets: true,
+             lineWrapping: true,
+         });
+         editor.on("change", function() {
+             $("#shareLink").html("");
+         });
+         var editor_sql = CodeMirror.fromTextArea(document.getElementById("sql"), {
+             mode: { name: "sql" },
+             lineNumbers: true,
+             indentUnit: 2,
+             lineWrapping: true,
+             readOnly: true,
+             viewportMargin: Infinity,
+         });
+         // Submit with Control + Enter
+         $(document).on("keydown", function (e) {
+             if ((event.keyCode == 10 || event.keyCode == 13) && event.ctrlKey) {
+                 $("form").submit();
+             }
+         });
+
+         var alert = $(".alert");
+         var data = $("#data");
+         // Share button
+         $("#share").click(function() {
+             $.post("/play/share", editor.getValue(), function (resp) {
+                 let link = location.protocol + '//' + location.host + location.pathname + "?share=" + resp;
+                 $("#shareLink").html(jQuery('<a>').attr('href', link).text(link));
+             }).fail(function (err) {
+                 alert.text(err.responseText);
+                 alert.show();
+             });
+             
+             return false;
+         });
+         $("form").submit(function (e) {
+             e.preventDefault();
+             alert.hide();
+             $.post("/play", editor.getValue(), function (resp) {
+                 editor_sql.setValue(resp.sql);
+                 data.html(resp.data);
+                 $("#shareLink").html();
+                 data.show();
+             }).fail(function (err) {
+                 alert.text(err.responseText);
+                 data.hide();
+                 alert.show();
+             });
+         });
          $("form").submit();
-       }
-     });
-
-     var alert = $(".alert");
-     var data = $("#data");
-     $("#share").click(function() {
-
-       console.log("eh");
-        $.post("/play/share", editor.getValue(), function (resp) {
-          let link = location.protocol + '//' + location.host + location.pathname + "?share=" + resp;
-          $("#shareLink").html(jQuery('<a>').attr('href', link).text(link));
-        }).fail(function (err) {
-          alert.text(err.responseText);
-          alert.show();
-        });
-          
-       return false;
-     });
-     $("form").submit(function (e) {
-       e.preventDefault();
-       alert.hide();
-       $.post("/play", editor.getValue(), function (resp) {
-         editor_sql.setValue(resp.sql);
-         data.html(resp.data);
-         data.show();
-       }).fail(function (err) {
-         alert.text(err.responseText);
-         data.hide();
-         alert.show();
-       });
      });
     </script>
   </body>

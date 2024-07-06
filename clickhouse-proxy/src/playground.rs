@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use serde::Serialize;
-use uuid::Uuid;
 
 use super::{decode_query, ClickhouseQuery, Error, SharingError, State};
 
@@ -24,10 +24,15 @@ async fn share(
     axum::extract::State(state): axum::extract::State<State>,
     data: String,
 ) -> Result<String, SharingError> {
-    let id = uuid::Uuid::new_v4().to_string();
+    let mut hasher = DefaultHasher::default();
+    data.hash(&mut hasher);
+    let id = hasher.finish().to_string();
     let shares = state.args.shares.as_ref().ok_or(SharingError::NotEnabled)?;
     std::fs::create_dir_all(shares)?;
-    std::fs::write(shares.join(&id), data.trim())?;
+    let dest = shares.join(&id);
+    if !dest.exists() {
+        std::fs::write(dest, data.trim())?;
+    }
     Ok(id)
 }
 
@@ -62,7 +67,9 @@ async fn playground_post(
 }
 fn read_share(id: &str, state: State) -> Result<String, SharingError> {
     let shares = state.args.shares.as_ref().ok_or(SharingError::NotEnabled)?;
-    Uuid::try_parse(id)?;
+    if !id.chars().all(|c| c.is_alphanumeric() || c == '-') {
+        return Err(SharingError::InvalidId);
+    }
     Ok(std::fs::read_to_string(shares.join(id))?)
 }
 async fn playground(

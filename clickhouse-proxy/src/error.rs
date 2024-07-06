@@ -31,8 +31,8 @@ pub enum SharingError {
     NotEnabled,
     #[error("IO error: {0}")]
     IO(#[from] std::io::Error),
-    #[error("Invalid UUID: {0}")]
-    Uuid(#[from] uuid::Error),
+    #[error("Invalid share ID")]
+    InvalidId,
 }
 
 #[derive(thiserror::Error, Debug)]
