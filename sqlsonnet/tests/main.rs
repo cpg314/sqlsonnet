@@ -28,7 +28,7 @@ fn sql_roundtrip() -> anyhow::Result<()> {
 
 fn run_query(q: &str) -> anyhow::Result<Query> {
     Ok(Query::from_jsonnet(
-        &format!("local u = import 'sqlsonnet.libsonnet'; {}", q),
+        &format!("{} {}", sqlsonnet::import_utils(), q),
         FsResolver::default(),
     )?)
 }
@@ -46,5 +46,18 @@ fn parenthesization() -> anyhow::Result<()> {
     let query = run_query("{ select: { fields: [ u.op('*', [3, u.op('+', [1, 2])]) ] } }")?;
     assert_eq!(query.to_sql(true), "SELECT 3 * (1 + 2)");
 
+    Ok(())
+}
+
+#[test]
+fn examples() -> anyhow::Result<()> {
+    Queries::from_jsonnet(
+        &format!(
+            "{} {}",
+            sqlsonnet::import_utils(),
+            include_str!("example.jsonnet")
+        ),
+        FsResolver::default(),
+    )?;
     Ok(())
 }

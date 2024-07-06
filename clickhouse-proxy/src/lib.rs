@@ -20,6 +20,7 @@ use tracing::*;
 use sqlsonnet::{FsResolver, Queries, Query};
 
 /// Reverse proxies a Clickhouse HTTP server, transforming Jsonnet or JSON queries into SQL.
+///
 /// WARN: For now, the server assumes that the client are trusted. For example, they might be able
 ///       to access the filesystem via standard library calls, cause large resource usage, etc.
 #[derive(Clone, Parser)]
