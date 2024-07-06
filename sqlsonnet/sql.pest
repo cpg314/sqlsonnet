@@ -46,8 +46,9 @@ HAVING   = { ^"having" }
 USING    = { ^"using" }
 ON       = { ^"on" }
 SELECT   = { ^"select" }
+SETTINGS   = { ^"settings" }
 JOIN     = { ^"inner "? ~ ^"join" }
-KEYWORD  = { ASC | DESC | AS | SELECT | FROM | GROUP_BY | ORDER_BY | WHERE | LIMIT | JOIN | USING | HAVING | ON }
+KEYWORD  = { ASC | DESC | AS | SELECT | FROM | GROUP_BY | ORDER_BY | WHERE | LIMIT | JOIN | USING | HAVING | ON | SETTINGS }
 
 simple_identifier = @{ (ASCII_ALPHA+ ~ (ASCII_ALPHANUMERIC | "_")*) | "*" }
 identifier        = @{ !KEYWORD ~ (simple_identifier ~ ".")? ~ simple_identifier }
@@ -76,10 +77,12 @@ order_by    = { ORDER_BY ~ order_exprs }
 
 limit = { LIMIT ~ #limit = number }
 
+settings = { SETTINGS ~ exprs }
+
 fields = { exprs }
 
 select = {
-    SELECT ~ fields ~ (FROM ~ table_or_subquery)? ~ join* ~ where? ~ group_by? ~ having? ~ order_by? ~ limit? ~ ";"?
+    SELECT ~ fields ~ (FROM ~ table_or_subquery)? ~ join* ~ where? ~ group_by? ~ having? ~ order_by? ~ limit? ~ settings? ~ ";"?
 }
 
 query   = { SOI ~ select ~ EOI }

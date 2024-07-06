@@ -273,6 +273,10 @@ impl ToSql for select::Query {
         if let Some(limit) = &self.limit {
             write!(f, "\nLIMIT {}", limit)?;
         }
+        if !self.settings.is_empty() {
+            write!(f, "\nSETTINGS ")?;
+            self.settings.to_sql(f)?;
+        }
         if !f.compact {
             writeln!(f)?;
         }

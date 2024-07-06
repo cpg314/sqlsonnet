@@ -44,6 +44,8 @@
       orderBy: ['col1', ['col2', 'desc'], ['col3', 'asc']],
       // Integer (optional)
       limit: 100,
+      // List of expressions (optional)
+      settings: ['join_algorithm="parallel_hash"'],
     },
   },
   // Adding fields and JOINs

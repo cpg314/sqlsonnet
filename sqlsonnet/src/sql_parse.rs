@@ -265,6 +265,9 @@ impl FromParsed for queries::select::Query {
                 Rule::having => {
                     query.having = Some(FromParsed::parse(p.into_inner().nth(1).unwrap())?);
                 }
+                Rule::settings => {
+                    query.settings = FromParsed::parse(p.into_inner().nth(1).unwrap())?;
+                }
                 _ => {}
             }
         }

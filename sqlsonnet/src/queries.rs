@@ -275,5 +275,7 @@ pub mod select {
         pub order_by: Vec<order_by::Expr>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub limit: Option<usize>,
+        #[serde(default, skip_serializing_if = "ExprList::is_empty")]
+        pub settings: ExprList,
     }
 }

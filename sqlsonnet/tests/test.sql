@@ -43,6 +43,7 @@ ORDER BY
   a,
   b DESC
 LIMIT 100
+SETTINGS setting1 = 0
 ;
 SELECT
   a

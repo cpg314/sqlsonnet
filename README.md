@@ -156,6 +156,8 @@ See also the official [Jsonnet Tools page](https://jsonnet.org/learning/tools.ht
       orderBy: ['col', ['col', 'desc'], ['col', 'asc']],
       // Integer (optional)
       limit: 100,
+      // List of expressions (optional)
+      settings: ['join_algorithm="parallel_hash"'],
     },
   },
 ]
