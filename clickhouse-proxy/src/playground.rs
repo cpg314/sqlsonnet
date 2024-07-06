@@ -27,7 +27,7 @@ async fn share(
     let id = uuid::Uuid::new_v4().to_string();
     let shares = state.args.shares.as_ref().ok_or(SharingError::NotEnabled)?;
     std::fs::create_dir_all(shares)?;
-    std::fs::write(shares.join(&id), data)?;
+    std::fs::write(shares.join(&id), data.trim())?;
     Ok(id)
 }
 
@@ -78,7 +78,7 @@ async fn playground(
     let prelude = prelude.trim();
     let html = include_str!("playground.html")
         .replace("[PRELUDE]", prelude)
-        .replace("[INITIAL]", initial)
+        .replace("[INITIAL]", initial.trim())
         .replace("[PRELUDE_ROWS]", &prelude.lines().count().to_string());
     Ok(axum::response::Html(html))
 }
