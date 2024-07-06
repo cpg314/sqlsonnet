@@ -113,51 +113,6 @@ $ cat test.sql| sqlsonnet from-sql -
 
 See also the official [Jsonnet Tools page](https://jsonnet.org/learning/tools.html).
 
-## Database proxies
-
-The database proxies convert Jsonnet requests into SQL, before sending them to the database server and returning the response.
-
-```mermaid
-sequenceDiagram
- participant Client
- participant Proxy
- participant Database
- Client->>Proxy: Jsonnet
- Proxy->>Database: SQL
- Database->>Proxy: Response
- Proxy->>Client:Response
-```
-
-They also support:
-
-- Caching responses to previous requests.
-- Custom import paths.
-- Prepending all queries with a prelude (e.g. to make available libraries in the import path).
-- Serving an interactive playground where users can enter Jsonnet, and see the generated SQL as well as the database response.
-
-### `sqlsonnet_clickhouse_proxy`
-
-> [!WARNING]  
-> The current implementation assumes a fully trusted environment.
-
-```text
-Reverse proxies a Clickhouse HTTP server, transforming Jsonnet or JSON queries into SQL
-
-Usage: sqlsonnet_clickhouse_proxy [OPTIONS] --url <URL> --username <USERNAME> --port <PORT>
-
-Options:
-      --url <URL>            [env: CLICKHOUSE_URL=]
-      --username <USERNAME>  Clickhouse username [env: CLICKHOUSE_USERNAME=]
-      --password <PASSWORD>  [env: CLICKHOUSE_PASSWORD=]
-      --cache <CACHE>
-      --library <LIBRARY>    Folder with Jsonnet library files
-      --shares <SHARES>      Folder with shared snippets
-      --prelude <PRELUDE>    Prepended to all requests
-      --port <PORT>
-  -h, --help                 Print help (see more with '--help')
-  -V, --version              Print version
-```
-
 ## Syntax
 
 ```jsonnet
@@ -246,6 +201,51 @@ u.select(
     where: u.eq(1, 1),
   } + u.where_and(u.ge(2, 1)),
 ),
+```
+
+## Database proxies
+
+The database proxies convert Jsonnet requests into SQL, before sending them to the database server and returning the response.
+
+```mermaid
+sequenceDiagram
+ participant Client
+ participant Proxy
+ participant Database
+ Client->>Proxy: Jsonnet
+ Proxy->>Database: SQL
+ Database->>Proxy: Response
+ Proxy->>Client:Response
+```
+
+They also support:
+
+- Caching responses to previous requests.
+- Custom import paths.
+- Prepending all queries with a prelude (e.g. to make available libraries in the import path).
+- Serving an interactive playground where users can enter Jsonnet, and see the generated SQL as well as the database response.
+
+### `sqlsonnet_clickhouse_proxy`
+
+> [!WARNING]  
+> The current implementation assumes a fully trusted environment.
+
+```text
+Reverse proxies a Clickhouse HTTP server, transforming Jsonnet or JSON queries into SQL
+
+Usage: sqlsonnet_clickhouse_proxy [OPTIONS] --url <URL> --username <USERNAME> --port <PORT>
+
+Options:
+      --url <URL>            [env: CLICKHOUSE_URL=]
+      --username <USERNAME>  Clickhouse username [env: CLICKHOUSE_USERNAME=]
+      --password <PASSWORD>  [env: CLICKHOUSE_PASSWORD=]
+      --cache <CACHE>
+      --library <LIBRARY>    Folder with Jsonnet library files
+      --shares <SHARES>      Folder with shared snippets
+      --prelude <PRELUDE>    Prepended to all requests
+      --port <PORT>
+  -h, --help                 Print help (see more with '--help')
+  -V, --version              Print version
 ```
 
 ## Implementation details
