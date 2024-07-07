@@ -9,6 +9,8 @@
   and(l): self.op('AND', l, true),
   sum(l): self.op('+', l, 0),
   prod(l): self.op('*', l, 1),
+  div(a, b): self.op('/', [a, b]),
+  sub(a, b): self.op('-', [a, b]),
   or(l): self.op('OR', l),
   string(s): "'" + s + "'",
   eq(a, b): [a, '=', b],
@@ -23,4 +25,5 @@
   // Functions
   fn(name, params): { fn: name, params: params },
   count(expr='*', as='c'): self.as(self.fn('count', [expr]), as),
+  rand(): self.fn('rand', []),
 }
