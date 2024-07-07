@@ -13,16 +13,20 @@ import "codemirror/mode/sql/sql.js";
 import { jsonnet } from "./jsonnet.js";
 import { UnControlled as CodeMirror } from "react-codemirror2";
 
+type Location = [line: number, col: number];
+
 function Editor({
   value,
   onChange = (_data) => {},
   mode,
   readOnly = false,
+  location = null,
 }: {
   value: string;
   onChange?: (data: string) => void;
   mode: string;
   readOnly?: boolean;
+  location?: Location | null;
 }) {
   const editor = useRef();
   const wrapper = useRef();
@@ -36,6 +40,23 @@ function Editor({
       wrapper.current.hydrated = false;
     }
   };
+  if (location) {
+    // Set marker
+    if (editor.current) {
+      // @ts-ignore
+      editor.current.markText(
+        { line: location[0], ch: location[1] },
+        { line: location[0], ch: location[1] + 1 },
+        { className: "mark" },
+      );
+    }
+  } else {
+    // Unset marker
+    if (editor.current) {
+      // @ts-ignore
+      editor.current.doc.getAllMarks().forEach((marker) => marker.clear());
+    }
+  }
   return (
     <CodeMirror
       value={value}
@@ -78,14 +99,23 @@ export function getWasm() {
 function App() {
   const [alert, setAlert] = useState("");
   const [valueSql, setValueSql] = useState("");
+  const [location, setLocation] = useState(null);
 
   const refresh = (data: string) => {
     setAlert("");
+    setLocation(null);
     getWasm().then(() => {
       try {
         setValueSql(to_sql(data));
       } catch (error: any) {
-        setAlert(error.toString());
+        if (typeof error == "object") {
+          setAlert(error.message);
+          if (error.location) {
+            setLocation(error.location);
+          }
+        } else {
+          setAlert(error.toString());
+        }
       }
     });
   };
@@ -98,7 +128,12 @@ function App() {
     <>
       <div className="row">
         <div className="col-6">
-          <Editor value={initial} mode="jsonnet" onChange={refresh} />
+          <Editor
+            value={initial}
+            mode="jsonnet"
+            onChange={refresh}
+            location={location}
+          />
           <p>Input jsonnet</p>
         </div>
         <div className="col-6">
