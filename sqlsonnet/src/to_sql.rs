@@ -198,6 +198,9 @@ impl ToSql for from::From {
 
 impl ToSql for join::On {
     fn to_sql(&self, f: &mut IndentedPrinter) -> fmt::Result {
+        if self.is_empty() {
+            return Ok(());
+        }
         match self {
             Self::On(on) => {
                 writeln!(f, "ON")?;
@@ -212,7 +215,11 @@ impl ToSql for join::On {
 }
 impl ToSql for join::Join {
     fn to_sql(&self, f: &mut IndentedPrinter) -> fmt::Result {
-        write!(f, "JOIN ")?;
+        if self.on.is_empty() {
+            write!(f, "CROSS JOIN ")?;
+        } else {
+            write!(f, "JOIN ")?;
+        }
         self.from.to_sql(f)?;
         writeln!(f)?;
         self.on.to_sql(&mut f.indented())

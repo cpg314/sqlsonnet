@@ -147,6 +147,8 @@ See also the official [Jsonnet Tools page](https://jsonnet.org/learning/tools.ht
         { from: 'a', on: ['f1=f2'] },
         // From expression and USING (list of column identifiers)
         { from: 'a', using: ['f'] },
+        // An empty `on` or `using` parameter results in a CROSS JOIN
+        { from: 'a', using: [] },
       ],
       // Expression (optional). Use u.and, u.or to combine.
       having: true,

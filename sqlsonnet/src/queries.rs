@@ -222,6 +222,14 @@ pub mod join {
         #[serde(rename = "using")]
         Using(Vec<String>),
     }
+    impl On {
+        pub fn is_empty(&self) -> bool {
+            match self {
+                On::On(exprs) => exprs.is_empty(),
+                On::Using(cols) => cols.is_empty(),
+            }
+        }
+    }
 }
 
 pub mod order_by {
