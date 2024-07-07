@@ -25,6 +25,8 @@ LIMIT 10;
 
 This becomes particularly useful when working with sets of complex queries, which can be created and maintained in a composable way, like source code, benefiting from the Jsonnet ecosystem (language server, formatter, linter, editor integrations).
 
+**In-browser demo with Webassembly**: https://cpg314.github.io/sqlsonnet/
+
 ## Command line interface
 
 The `sqlsonnet` command line interface converts Jsonnet statements to (and to a lesser extent from) SQL.
