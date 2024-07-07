@@ -1,0 +1,22 @@
+[package]
+name = "sqlsonnet-cli"
+version.workspace = true
+edition = "2021"
+
+[[bin]]
+name = "sqlsonnet"
+path = "src/sqlsonnet.rs"
+
+[dependencies]
+sqlsonnet = { path = "../sqlsonnet", features = ["fancy"] }
+tracing.workspace = true
+clap.workspace = true
+miette = { version = "7.2.0", features = ["fancy", "syntect-highlighter"] }
+clap-stdin = "0.4.0"
+bat = { version = "0.24.0", default-features = false }
+lazy_static = "1.4.0"
+pretty_assertions = "1.4.0"
+thiserror.workspace = true
+
+[dev-dependencies]
+anyhow.workspace = true

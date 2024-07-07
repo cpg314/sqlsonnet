@@ -4,12 +4,24 @@ use std::str::FromStr;
 use clap::Parser;
 use tracing::*;
 
-use sqlsonnet::Error;
 use sqlsonnet::Queries;
 
 lazy_static::lazy_static! {
     static ref THEMES: Vec<String> =
         bat::assets::HighlightingAssets::from_binary().themes().map(String::from).collect();
+}
+
+#[derive(Debug, miette::Diagnostic, thiserror::Error)]
+enum Error {
+    #[error("Failed to read input")]
+    Input(#[from] clap_stdin::StdinError),
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    Inner(#[from] sqlsonnet::Error),
+    #[error("Failed to highlight SQL")]
+    Bat(#[from] bat::error::Error),
+    #[error(transparent)]
+    Miette(#[from] miette::InstallError),
 }
 
 #[derive(Parser)]

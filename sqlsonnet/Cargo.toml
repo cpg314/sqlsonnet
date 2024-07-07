@@ -3,30 +3,24 @@ name = "sqlsonnet"
 version.workspace = true
 edition = "2021"
 
-[[bin]]
-name = "sqlsonnet"
-path = "src/sqlsonnet.rs"
-
 [dependencies]
-tracing.workspace = true
 tracing-subscriber.workspace = true
-clap.workspace = true
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.117"
 jrsonnet-evaluator = { git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-evaluator", rev = "0277dbbd8c757e6154d86155c6d687d395d6f8f1", features = ["exp-null-coaelse"] }
 jrsonnet-stdlib = { git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-stdlib", rev = "0277dbbd8c757e6154d86155c6d687d395d6f8f1", features = ["exp-null-coaelse"] }
 jrsonnet-parser = { git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-parser", rev = "0277dbbd8c757e6154d86155c6d687d395d6f8f1", features = ["exp-null-coaelse"] }
 jrsonnet-gcmodule = "0.3.6"
-miette = { version = "7.2.0", features = ["fancy", "syntect-highlighter"] }
-clap-stdin = "0.4.0"
+miette = { version = "7.2.0" }
 thiserror.workspace = true
-bat = { version = "0.24.0", default-features = false }
-lazy_static = "1.4.0"
 pest = "2.7.10"
 pest_derive = { version = "2.7.10", features = ["grammar-extras"] }
 serde_with = "3.8.1"
 itertools.workspace = true
 pretty_assertions = "1.4.0"
+
+[features]
+fancy = ["miette/fancy", "miette/syntect-highlighter"]
 
 [dev-dependencies]
 anyhow.workspace = true

@@ -2,8 +2,6 @@ use miette::Diagnostic;
 
 #[derive(thiserror::Error, Diagnostic, Debug)]
 pub enum Error {
-    #[error("Failed to read input")]
-    Input(#[from] clap_stdin::StdinError),
     #[error(transparent)]
     #[diagnostic(transparent)]
     Jsonnet(#[from] JsonnetError),
@@ -13,10 +11,6 @@ pub enum Error {
     #[error(transparent)]
     #[diagnostic(transparent)]
     SqlParse(#[from] SQLParseError),
-    #[error("Failed to highlight SQL")]
-    Bad(#[from] bat::error::Error),
-    #[error(transparent)]
-    Miette(#[from] miette::InstallError),
 }
 
 #[derive(thiserror::Error, Diagnostic, Debug)]
