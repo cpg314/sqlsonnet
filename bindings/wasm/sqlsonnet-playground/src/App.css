@@ -1,0 +1,11 @@
+.CodeMirror-lines {
+    font-size: 12pt !important;
+}
+
+.CodeMirror {
+    border: rgba(0, 0, 0, 0.2) solid 1px;
+}
+
+.CodeMirror {
+    height: 500px !important;
+}
