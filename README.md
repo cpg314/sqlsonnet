@@ -107,13 +107,29 @@ $ sqlsonnet from-sql test.sql
 $ cat test.sql| sqlsonnet from-sql -
 ```
 
-## Recommended tools
+## Installation
+
+The [releases page](https://github.com/cpg314/sqlsonnet/releases) contains binaries (simple `tar` archive, Debian/Ubuntu `.deb` package, ArchLinux `.pkg`).
+
+A [Docker image](https://github.com/cpg314/sqlsonnet/pkgs/container/sqlsonnet) with `sqlsonnet` and `sqlsonnet_clickhouse_proxy` is also available at `ghcr.io/cpg314/sqlsonnet:0.1.1`.
+
+### Recommended tools
 
 - The [jsonnet language server](https://github.com/grafana/jsonnet-language-server).
 - The [jsonnetfmt formatter](https://github.com/google/go-jsonnet/tree/master).
 - The jsonnet integration for your favourite editor.
 
 See also the official [Jsonnet Tools page](https://jsonnet.org/learning/tools.html).
+
+### Building from source
+
+Install [cargo make](https://github.com/sagiegurari/cargo-make) and run:
+
+```
+$ cargo make packages
+$ # To also build a docker image:
+$ cargo make docker
+```
 
 ## Syntax
 
