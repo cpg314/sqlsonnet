@@ -78,8 +78,8 @@ function Editor({
   );
 }
 
-function Alert({ value }: { value: string }) {
-  return value.length == 0 ? (
+function Alert({ value }: { value: any }) {
+  return value == null ? (
     <></>
   ) : (
     <div className="alert alert-warning" role="alert">
@@ -97,19 +97,29 @@ export function getWasm() {
 }
 
 function App() {
-  const [alert, setAlert] = useState("");
+  const [alert, setAlert] = useState(<></>);
   const [valueSql, setValueSql] = useState("");
   const [location, setLocation] = useState(null);
 
   const refresh = (data: string) => {
-    setAlert("");
+    setAlert(<></>);
     setLocation(null);
     getWasm().then(() => {
       try {
         setValueSql(to_sql(data));
       } catch (error: any) {
         if (typeof error == "object") {
-          setAlert(error.message);
+          if (error.code != null) {
+            setAlert(
+              <>
+                {error.message}
+                <br />
+                <pre>{error.code}</pre>
+              </>,
+            );
+          } else {
+            setAlert(error.message);
+          }
           if (error.location) {
             setLocation(error.location);
           }
