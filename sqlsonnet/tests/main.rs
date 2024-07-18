@@ -5,7 +5,7 @@ use sqlsonnet::{FsResolver, Queries, Query};
 #[test]
 fn sql_roundtrip() -> anyhow::Result<()> {
     // SQL to Query
-    let input = include_str!("test.sql");
+    let input = include_str!("data/test.sql");
     let queries = Queries::from_sql(input)?;
     println!("{:?}", queries);
 
@@ -40,25 +40,32 @@ macro_rules! run_impl {
 run_impl!(run_query, Query);
 run_impl!(run_queries, Queries);
 
-#[test]
-fn function_call() -> anyhow::Result<()> {
-    let query = run_query("{ select: { fields: [ u.fn('test', [1, 2]) ] } }")?;
-    assert_eq!(query.to_sql(true), "SELECT test(1, 2)");
+mod jsonnet_to_sql {
+    use super::*;
+    macro_rules! jsonnet_to_sql {
+        ($filename: ident) => {
+            #[test]
+            fn $filename() -> anyhow::Result<()> {
+                let data = include_str!(
+                    concat!("data/", stringify!($filename), ".jsonnet")
+                );
+                let expected = data.lines().next().unwrap().trim_start_matches("//").trim();
+                let query = run_query(&data)?;
+                pretty_assertions::assert_eq!(query.to_sql(true), expected);
 
-    Ok(())
-}
-
-#[test]
-fn parenthesization() -> anyhow::Result<()> {
-    let query = run_query("{ select: { fields: [ u.op('*', [3, u.op('+', [1, 2])]) ] } }")?;
-    assert_eq!(query.to_sql(true), "SELECT 3 * (1 + 2)");
-
-    Ok(())
+                Ok(())
+            }
+        };
+        ($($filename:ident),+) => {
+            $( jsonnet_to_sql!($filename); )+
+        };
+    }
+    jsonnet_to_sql!(function_call, parenthesization);
 }
 
 #[test]
 fn examples() -> anyhow::Result<()> {
-    run_queries(include_str!("example.jsonnet"))?;
+    run_queries(include_str!("data/example.jsonnet"))?;
     Ok(())
 }
 
