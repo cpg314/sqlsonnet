@@ -172,8 +172,8 @@ $ cargo make docker
       having: true,
       // Expression (optional). Use u.and, u.or to combine.
       where: true,
-      // List of: expr (ASC) or [expr, "desc"] or [expr, "asc"]
-      orderBy: ['col', ['col', 'desc'], ['col', 'asc']],
+      // List of identifiers or { expr: identifier, order: "desc" } or { expr: identifier, order: "asc" }
+      orderBy: ['col1', { expr: 'col2', order: 'desc' }, { expr: 'col3', order: 'asc' }],
       // Integer (optional)
       limit: 100,
       // List of expressions (optional)

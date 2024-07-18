@@ -238,9 +238,9 @@ impl ToSql for order_by::Expr {
     fn to_sql(&self, f: &mut IndentedPrinter) -> fmt::Result {
         match self {
             order_by::Expr::Asc(e) => e.to_sql(f),
-            order_by::Expr::Ordering(e, ordering) => {
-                e.to_sql(f)?;
-                ordering.to_sql(f)?;
+            order_by::Expr::Ordering { order, expr } => {
+                expr.to_sql(f)?;
+                order.to_sql(f)?;
                 Ok(())
             }
         }

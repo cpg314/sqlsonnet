@@ -239,14 +239,14 @@ pub mod order_by {
     #[serde(deny_unknown_fields, untagged)]
     pub enum Expr {
         Asc(super::Expr),
-        Ordering(super::Expr, Ordering),
+        Ordering { expr: super::Expr, order: Ordering },
     }
     impl Expr {
-        pub fn new(e: super::Expr, ordering: Ordering) -> Self {
-            if ordering == Ordering::Asc {
-                Self::Asc(e)
+        pub fn new(expr: super::Expr, order: Ordering) -> Self {
+            if order == Ordering::Asc {
+                Self::Asc(expr)
             } else {
-                Self::Ordering(e, ordering)
+                Self::Ordering { expr, order }
             }
         }
     }

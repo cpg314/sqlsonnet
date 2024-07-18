@@ -40,8 +40,8 @@
       having: true,
       // Expression (optional). Use u.and, u.or to combine.
       where: true,
-      // List of identifiers or [identifier, "desc"] or [identifier, "asc"]
-      orderBy: ['col1', ['col2', 'desc'], ['col3', 'asc']],
+      // List of identifiers or { expr: identifier, order: "desc" } or { expr: identifier, order: "asc" }
+      orderBy: ['col1', { expr: 'col2', order: 'desc' }, { expr: 'col3', order: 'asc' }],
       // Integer (optional)
       limit: 100,
       // List of expressions (optional)

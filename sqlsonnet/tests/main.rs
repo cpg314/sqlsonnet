@@ -66,6 +66,7 @@ mod jsonnet_to_sql {
 #[test]
 fn examples() -> anyhow::Result<()> {
     let queries = run_queries(include_str!("data/example.jsonnet"))?;
+    println!("{:#?}", queries);
     assert_eq!(queries.to_sql(false), include_str!("data/example.sql"));
     Ok(())
 }
