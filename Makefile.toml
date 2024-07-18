@@ -10,8 +10,43 @@ args = ["."]
 [tasks.help]
 script = '''
 #!/usr/bin/env bash
+set -euo pipefail
 COMMAND="cargo run -q -r --bin sqlsonnet --"
 eval $COMMAND --help
 eval $COMMAND to-sql --help
 eval $COMMAND from-sql --help
 '''
+
+[tasks.wasm]
+command = "wasm-pack"
+args = ["build", "--target", "web", "bindings/wasm/"]
+condition = { files_modified = { input = ["./sqlsonnet/**/*", "./bindings/wasm/src/**/*"], output = ["./bindings/wasm/pkg/*"] } }
+
+[tasks.wasm-dev]
+command = "wasm-pack"
+args = ["build", "--target", "web", "--dev", "bindings/wasm/"]
+
+[tasks.playground]
+dependencies = ["wasm"]
+script = '''
+#!/usr/bin/env bash
+set -euo pipefail
+pushd sqlsonnet-playground
+npm run build
+popd
+mkdir -p docs
+rsync -r "sqlsonnet-playground/dist/" docs
+touch docs/.nojekyll
+tree -a docs
+'''
+
+[tasks.playground-install]
+cwd = "sqlsonnet-playground"
+command = "npm"
+args = ["install"]
+
+[tasks.playground-run]
+dependencies = ["wasm-dev", "playground-install"]
+cwd = "sqlsonnet-playground"
+command = "npm"
+args = ["run", "dev"]
