@@ -20,8 +20,8 @@
   lt(a, b): [a, '<', b],
   leq(a, b): [a, '<=', b],
   in_(a, b): [a, 'IN', b],
-  // expr AS as
-  as(expr, as): { expr: expr, alias: as },
+  // expr AS as, overriding existing aliases.
+  as(expr, as): if std.isObject(expr) && std.objectHas(expr, 'alias') then { expr: expr.expr, alias: as } else { expr: expr, alias: as },
   // Functions
   fn(name, params): { fn: name, params: params },
   count(expr='*', as='c'): self.as(self.fn('count', [expr]), as),
