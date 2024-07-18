@@ -1,8 +1,8 @@
 mod error;
 pub use error::Error;
+mod from_sql;
 mod jsonnet;
 pub mod queries;
-mod sql_parse;
 mod to_sql;
 pub use jsonnet::{import_utils, FsResolver, ImportResolver, Jsonnet};
 pub use queries::{Queries, Query};
@@ -14,7 +14,7 @@ macro_rules! impl_conversions {
                 serde_json::to_value(self).unwrap().into()
             }
             pub fn from_sql(input: &str) -> Result<Self, Error> {
-                Ok(sql_parse::query_from_sql(input, $rule)?)
+                Ok(from_sql::query_from_sql(input, $rule)?)
             }
             pub fn from_jsonnet(input: &str, resolver: impl ImportResolver) -> Result<Self, Error> {
                 let json = jsonnet::evaluate(input, resolver.to_resolver())?;
@@ -28,8 +28,8 @@ macro_rules! impl_conversions {
     };
 }
 
-impl_conversions!(Queries, sql_parse::Rule::queries);
-impl_conversions!(Query, sql_parse::Rule::query);
+impl_conversions!(Queries, from_sql::Rule::queries);
+impl_conversions!(Query, from_sql::Rule::query);
 
 pub fn setup_logging() {
     tracing_subscriber::fmt()
