@@ -60,7 +60,7 @@ mod jsonnet_to_sql {
             $( jsonnet_to_sql!($filename); )+
         };
     }
-    jsonnet_to_sql!(function_call, parenthesization, as_override);
+    jsonnet_to_sql!(function_call, parenthesization, as_override, empty_fields);
 }
 
 #[test]

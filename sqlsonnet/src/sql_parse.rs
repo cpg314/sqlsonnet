@@ -235,7 +235,7 @@ impl FromParsed for queries::select::Query {
             let rule = p.as_rule();
             match rule {
                 Rule::fields => {
-                    query.fields = FromParsed::parse(p.into_inner().next().unwrap())?;
+                    query.fields = Some(FromParsed::parse(p.into_inner().next().unwrap())?);
                 }
                 Rule::table_or_subquery => {
                     query.from = Some(FromParsed::parse(p)?);

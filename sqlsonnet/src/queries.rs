@@ -265,8 +265,8 @@ pub mod select {
     #[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
     #[serde(deny_unknown_fields)]
     pub struct Query {
-        #[serde(skip_serializing_if = "ExprList::is_empty")]
-        pub fields: ExprList,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub fields: Option<ExprList>,
         pub from: Option<from::From>,
         #[serde(rename = "where")]
         #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -250,7 +250,11 @@ impl ToSql for order_by::Expr {
 impl ToSql for select::Query {
     fn to_sql(&self, f: &mut IndentedPrinter) -> fmt::Result {
         writeln!(f, "SELECT")?;
-        self.fields.to_sql(&mut f.indented())?;
+        if let Some(fields) = &self.fields {
+            fields.to_sql(&mut f.indented())?;
+        } else {
+            ExprList(vec!["*".into()]).to_sql(&mut f.indented())?;
+        }
 
         if let Some(from) = &self.from {
             writeln!(f)?;
