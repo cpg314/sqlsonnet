@@ -12,6 +12,6 @@ export default defineConfig({
             ],
         },
     },
-    build: { rollupOptions: { external: ["sqlsonnet"] } },
+    base: "/sqlsonnet",
     plugins: [topLevelAwait(), react()],
 });

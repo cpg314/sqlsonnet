@@ -97,12 +97,12 @@ export function getWasm() {
 }
 
 function App() {
-  const [alert, setAlert] = useState(<></>);
+  const [alert, setAlert] = useState(null as any);
   const [valueSql, setValueSql] = useState("");
   const [location, setLocation] = useState(null);
 
   const refresh = (data: string) => {
-    setAlert(<></>);
+    setAlert(null);
     setLocation(null);
     getWasm().then(() => {
       try {
