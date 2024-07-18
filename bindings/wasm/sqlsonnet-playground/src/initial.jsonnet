@@ -11,5 +11,5 @@ local badge_join = {
     from: 'employees',
     joins+: [badge_join],
     where: 'employed',
-  } + u.where_and(u.ge('age', 30)),
+  } + u.where_and([u.ge('age', 30)]),
 }

@@ -65,6 +65,6 @@
       fields: [0],
       from: 'a',
       where: u.eq(1, 1),
-    } + u.where_and(u.ge(2, 1)),
+    } + u.where_and([u.ge(2, 1)]),
   ),
 ]

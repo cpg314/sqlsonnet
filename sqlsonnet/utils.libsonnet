@@ -3,7 +3,7 @@
 {
   op(operator, l, empty=null): if std.length(l) == 0 then empty else if std.length(l) == 1 then l[0] else [l[0], operator, self.op(operator, l[1:], empty)],
   select(x): { select: x },
-  where_and(expr): { where: $.and([expr] + (if 'where' in super then [super.where] else [])) },
+  where_and(expr_list): { where: $.and(expr_list + (if 'where' in super then [super.where] else [])) },
   having_and(expr): { having: $.and([expr] + (if 'having' in super then [super.having] else [])) },
   // Operators
   and(l): self.op('AND', l, true),
