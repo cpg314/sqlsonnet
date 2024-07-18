@@ -90,6 +90,10 @@ impl<'a> IntoIterator for &'a Queries {
 
 pub mod expr {
     use super::*;
+
+    #[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
+    pub struct Prefix(pub String);
+
     #[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
     pub struct Operator(pub String);
     impl Operator {
@@ -118,6 +122,7 @@ pub mod expr {
         RawBool(bool),
         RawInteger(i64),
         RawFloat(FloatEq),
+        Prefix(Prefix, Box<Expr>),
         // [expr, op, [expr]]
         Operator(Box<Expr>, Operator, Box<Expr>),
         // [expr, [[op, expr], ...]]

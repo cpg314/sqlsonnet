@@ -14,12 +14,14 @@
   or(l): self.op('OR', l),
   string(s): "'" + s + "'",
   eq(a, b): [a, '=', b],
+  neq(a, b): [a, '!=', b],
   ge(a, b): [a, '>=', b],
   le(a, b): [a, '<=', b],
   gt(a, b): [a, '>', b],
   lt(a, b): [a, '<', b],
   leq(a, b): [a, '<=', b],
   in_(a, b): [a, 'IN', b],
+  not(expr): ['NOT', expr],
   // expr AS as, overriding existing aliases.
   as(expr, as): if std.isObject(expr) && std.objectHas(expr, 'alias') then { expr: expr.expr, alias: as } else { expr: expr, alias: as },
   // Functions

@@ -7,7 +7,8 @@ SELECT
   col AS alias,
   1 + 2,
   1 = 2,
-  count(*)
+  count(*),
+  NOT (1 != 2)
 FROM a
 JOIN a
   ON

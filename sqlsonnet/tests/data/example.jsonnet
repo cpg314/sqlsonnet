@@ -19,6 +19,8 @@
         u.eq(1, 2),
         // Function, equivalent to {fn: "count", params: ["*"]}
         u.fn('count', ['*']),
+        // Negation
+        u.not(u.neq(1, 2)),
       ],
       // From expression (optional)
       // Table name

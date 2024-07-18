@@ -125,6 +125,10 @@ impl ToSql for Expr {
                 expr.to_sql(f)?;
                 write!(f, " AS {}", alias)
             }
+            Expr::Prefix(prefix, expr) => {
+                write!(f, "{} ", prefix.0)?;
+                parenthesized_expr(f, expr)
+            }
             Expr::OperatorSeq(q1, v) => {
                 // TODO Use op.linebreak?
                 parenthesized_expr(f, q1)?;
