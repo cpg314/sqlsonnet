@@ -31,22 +31,22 @@ dependencies = ["wasm"]
 script = '''
 #!/usr/bin/env bash
 set -euo pipefail
-pushd sqlsonnet-playground
+pushd playground
 npm run build
 popd
 mkdir -p docs
-rsync -r "sqlsonnet-playground/dist/" docs
+rsync -r "playground/dist/" docs
 touch docs/.nojekyll
 tree -a docs
 '''
 
 [tasks.playground-install]
-cwd = "sqlsonnet-playground"
+cwd = "playground"
 command = "npm"
 args = ["install"]
 
 [tasks.playground-run]
 dependencies = ["wasm-dev", "playground-install"]
-cwd = "sqlsonnet-playground"
+cwd = "playground"
 command = "npm"
 args = ["run", "dev"]
