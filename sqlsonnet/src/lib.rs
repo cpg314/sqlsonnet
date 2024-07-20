@@ -1,5 +1,5 @@
 mod error;
-pub use error::Error;
+pub use error::{Error, FormattedError};
 mod from_sql;
 mod jsonnet;
 pub mod queries;

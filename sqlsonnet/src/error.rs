@@ -1,4 +1,5 @@
-use miette::Diagnostic;
+use itertools::Itertools;
+use miette::{Diagnostic, SourceCode};
 
 #[derive(thiserror::Error, Diagnostic, Debug)]
 pub enum Error {
@@ -70,4 +71,66 @@ pub struct SQLParseError {
     pub src: miette::NamedSource<String>,
     #[label]
     pub span: miette::SourceOffset,
+}
+
+#[derive(serde::Serialize)]
+pub struct FormattedError {
+    message: String,
+    code: Option<String>,
+    location: Option<[usize; 2]>,
+}
+impl Error {
+    pub fn formatted(self) -> FormattedError {
+        FormattedError::from(self)
+    }
+}
+impl From<Error> for FormattedError {
+    fn from(source: Error) -> Self {
+        match &source {
+            Error::Jsonnet(_) => {
+                Self {
+                    message: source.to_string(),
+                    code: None,
+                    location: if let (Some(source_code), Some(labels)) =
+                        (source.source_code(), source.labels())
+                    {
+                        labels
+                            .filter_map(|l| source_code.read_span(l.inner(), 0, 0).ok())
+                            // Subtract 1 for the initial line
+                            .map(|sc| [sc.line() - 1, sc.column()])
+                            .next()
+                    } else {
+                        None
+                    },
+                }
+            }
+            Error::Json(json_source) => Self {
+                message: source.to_string(),
+                code: json_source
+                    .src
+                    .read_span(&miette::SourceSpan::new(json_source.span, 1), 2, 2)
+                    .ok()
+                    .and_then(|contents| String::from_utf8(contents.data().into()).ok())
+                    .map(|code| {
+                        let indent = code
+                            .lines()
+                            .filter(|l| !l.is_empty())
+                            .map(|l| l.chars().take_while(|c| c.is_whitespace()).count())
+                            .min()
+                            .unwrap_or_default();
+                        let indent: String = " ".repeat(indent);
+                        code.lines()
+                            .map(|l| l.strip_prefix(&indent).unwrap_or(l))
+                            .join("\n")
+                    }),
+                location: None,
+            },
+
+            _ => Self {
+                message: source.to_string(),
+                location: None,
+                code: None,
+            },
+        }
+    }
 }
