@@ -50,15 +50,14 @@ pub struct Flags {
 }
 
 fn decode_query(
-    request: String,
+    request: &str,
     state: State,
     compact: bool,
     limit: Option<usize>,
 ) -> Result<String, Error> {
-    let request = [state.prelude()?, request].join("\n");
     let resolver = state.resolver;
 
-    let queries = Queries::from_jsonnet(&request, resolver)?;
+    let queries = Queries::from_jsonnet(request, resolver)?;
     let mut query = if queries.len() == 1 {
         queries.into_iter().next().unwrap()
     } else {
@@ -91,7 +90,8 @@ async fn handle_query(
         request
     } else {
         let state = state.clone();
-        tokio::task::spawn_blocking(move || decode_query(request, state, true, None)).await??
+        let request = [state.prelude()?, request].join("\n");
+        tokio::task::spawn_blocking(move || decode_query(&request, state, true, None)).await??
     };
     state
         .send_query(ClickhouseQuery { query: sql, params })

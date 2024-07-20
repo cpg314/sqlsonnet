@@ -131,10 +131,8 @@ $ # To also build a docker image:
 $ cargo make docker
 $ # Build wasm bindings
 $ cargo make wasm
-$ # Launch the playground (with live preview of changes)
-$ cargo make playground-run
 $ # Build playground
-$ cargo make playground
+$ cargo make playground-wasm
 ```
 
 ## Syntax

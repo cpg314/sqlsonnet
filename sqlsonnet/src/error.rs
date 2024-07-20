@@ -79,6 +79,16 @@ pub struct FormattedError {
     code: Option<String>,
     location: Option<[usize; 2]>,
 }
+impl From<String> for FormattedError {
+    fn from(source: String) -> Self {
+        Self {
+            message: source,
+            code: None,
+            location: None,
+        }
+    }
+}
+
 impl Error {
     pub fn formatted(self) -> FormattedError {
         FormattedError::from(self)
@@ -126,11 +136,7 @@ impl From<Error> for FormattedError {
                 location: None,
             },
 
-            _ => Self {
-                message: source.to_string(),
-                location: None,
-                code: None,
-            },
+            _ => source.into(),
         }
     }
 }

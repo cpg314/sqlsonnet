@@ -11,6 +11,7 @@ thiserror = "1.0.61"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 glob = "0.3.1"
+serde_json = "1.0.117"
 
 [workspace]
 members = ["sqlsonnet", "clickhouse-proxy", "sqlsonnet-cli", "bindings/wasm"]

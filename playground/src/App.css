@@ -1,5 +1,5 @@
 .CodeMirror-lines {
-    font-size: 12pt !important;
+    font-size: 11pt !important;
 }
 
 .CodeMirror {
@@ -7,5 +7,12 @@
 }
 
 .CodeMirror {
-    height: 500px !important;
+    height: 800px !important;
+}
+
+.data {
+    font-family: monospace;
+    background-color: rgb(240, 240, 240);
+    padding: 10px;
+    height: 100%;
 }

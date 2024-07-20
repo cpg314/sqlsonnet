@@ -15,7 +15,7 @@ pub enum Error {
     Cache(#[from] CacheError),
     #[error("Task panicked: {0}")]
     Join(#[from] tokio::task::JoinError),
-    #[error("Multiple queries are not supported (received {0} queries)")]
+    #[error("Exactly one query must be provided (received {0} queries)")]
     MultipleQueries(usize),
     #[error("Could not convert body to bytes: {0}")]
     ConvertBody(axum::Error),
@@ -23,8 +23,17 @@ pub enum Error {
     Prelude(PathBuf, std::io::Error),
     #[error(transparent)]
     Sharing(#[from] SharingError),
+    #[error(transparent)]
+    Websocket(#[from] WebsocketError),
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum WebsocketError {
+    #[error("Internal error: {0}")]
+    Internal(#[from] axum::Error),
+    #[error("Invalid message: {0}")]
+    InvalidMessage(#[from] serde_json::Error),
+}
 #[derive(thiserror::Error, Debug)]
 pub enum SharingError {
     #[error("Not enabled")]
@@ -42,6 +51,16 @@ pub enum ClickhouseError {
     #[error("Query execution failure: {0}")]
     QueryFailure(#[from] reqwest::Error),
 }
+
+impl From<Error> for sqlsonnet::FormattedError {
+    fn from(value: Error) -> Self {
+        match value {
+            Error::SqlSonnet(e) => e.into(),
+            _ => value.to_string().into(),
+        }
+    }
+}
+
 impl axum::response::IntoResponse for Error {
     fn into_response(self) -> Response {
         let code = match self {

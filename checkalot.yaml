@@ -36,3 +36,13 @@ checks:
     name: typos
     command: typos sqlsonnet clickhouse-proxy README.md
     fix_command: typos -w sqlsonnet clickhouse-proxy README.md
+
+  - type: command
+    name: eslint
+    folder: playground
+    command: npm run lint
+
+  - type: command
+    name: npm-build
+    folder: playground
+    command: npm run build

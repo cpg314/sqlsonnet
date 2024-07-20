@@ -3,6 +3,9 @@ extend = "common.toml"
 [config]
 load_script = "wget -nc https://raw.githubusercontent.com/cpg314/cargo-make-template/v0.1.2/common.toml"
 
+[env]
+VITE_SQLSONNET_VERSION = "${CARGO_MAKE_PROJECT_VERSION}"
+
 [tasks.pestfmt]
 command = "pestfmt"
 args = ["."]
@@ -17,6 +20,10 @@ eval $COMMAND to-sql --help
 eval $COMMAND from-sql --help
 '''
 
+[tasks.cross]
+dependencies = ["playground-proxy"]
+
+# WASM bindings
 [tasks.wasm]
 command = "wasm-pack"
 args = ["build", "--target", "web", "bindings/wasm/"]
@@ -26,27 +33,47 @@ condition = { files_modified = { input = ["./sqlsonnet/**/*", "./bindings/wasm/s
 command = "wasm-pack"
 args = ["build", "--target", "web", "--dev", "bindings/wasm/"]
 
-[tasks.playground]
+# Playground for the clickhouse proxy
+[tasks.playground-proxy]
 dependencies = ["wasm"]
+env = { "VITE_PROXY" = "1" }
 script = '''
 #!/usr/bin/env bash
 set -euo pipefail
+
 pushd playground
-npm run build
+npm run build --emptyOutDir
+rm dist-proxy/assets/*.wasm
+tree dist-proxy
 popd
-mkdir -p docs
-rsync -r "playground/dist/" docs
+'''
+[tasks.playground-proxy-run]
+dependencies = ["wasm-dev", "playground-install"]
+env = { "VITE_PROXY" = "1", "VITE_WEBSOCKET" = "ws://localhost:1234/play/ws" }
+cwd = "playground"
+command = "npm"
+args = ["run", "dev"]
+
+# Standalone playground
+[tasks.playground-wasm]
+env = { "VITE_PROXY" = "0" }
+script = '''
+#!/usr/bin/env bash
+set -euo pipefail
+
+pushd playground
+npm run build --emptyOutDir
+popd
+
 touch docs/.nojekyll
 tree -a docs
 '''
+
+[tasks.playground-wasm-run]
+extend = "playground-proxy-run"
+env = { "VITE_PROXY" = "0" }
 
 [tasks.playground-install]
 cwd = "playground"
 command = "npm"
 args = ["install"]
-
-[tasks.playground-run]
-dependencies = ["wasm-dev", "playground-install"]
-cwd = "playground"
-command = "npm"
-args = ["run", "dev"]

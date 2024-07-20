@@ -1,5 +1,5 @@
 {
   select: {
-    fields: [1 + 1],
+    fields: [u.as(1 + 1, 'two')],
   },
 }
