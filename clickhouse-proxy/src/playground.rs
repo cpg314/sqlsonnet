@@ -12,6 +12,12 @@ const FORMAT: &str = "PrettyMonoBlock";
 
 static PROJECT_DIR: include_dir::Dir<'_> = include_dir::include_dir!("playground/dist-proxy");
 
+lazy_static::lazy_static! {
+    pub static ref VARIABLE_RE: regex::Regex = {
+        regex::Regex::new(r#"\$\{([a-z_A-Z0-9]+)(:[a-z]+)?\}"#).unwrap()
+    };
+}
+
 pub fn router() -> axum::Router<State> {
     axum::Router::new()
         .route(
@@ -42,7 +48,7 @@ mod websocket {
     use axum::extract::ws;
     use axum::response::IntoResponse;
 
-    #[derive(Deserialize)]
+    #[derive(Default, Deserialize)]
     struct Message {
         jsonnet: String,
         // Send the query to Clickhouse
@@ -55,6 +61,18 @@ mod websocket {
     impl Message {
         fn decode(message: Result<ws::Message, axum::Error>) -> Result<Self, WebsocketError> {
             Ok(serde_json::from_str(&message?.into_text()?)?)
+        }
+        fn replace_variables(mut self) -> Self {
+            self.jsonnet = VARIABLE_RE
+                .replace_all(&self.jsonnet, |caps: &regex::Captures| {
+                    let ident = caps.get(1).unwrap().as_str();
+                    match caps.get(2).map(|c| c.as_str()) {
+                        Some(":singlequote") => format!(r#""'" + {} + "'""#, ident),
+                        _ => ident.to_string(),
+                    }
+                })
+                .to_string();
+            self
         }
     }
     #[derive(Default, Serialize)]
@@ -126,7 +144,7 @@ mod websocket {
     ) -> Result<Response, Error> {
         info!("Handling websocket message");
         // TODO: Do the CPU-bound operations in a thread
-        let message = Message::decode(message)?;
+        let message = Message::decode(message)?.replace_variables();
         let sql = decode_query(&message.jsonnet, state.clone(), false, Some(ROWS_LIMIT))?;
         let data = if message.clickhouse {
             let resp = state
@@ -163,6 +181,18 @@ mod websocket {
             share,
             ..Default::default()
         })
+    }
+
+    mod test {
+        #[test]
+        fn variables() {
+            let msg = super::Message {
+                jsonnet: "${a} ${b:singlequote}".into(),
+                ..Default::default()
+            }
+            .replace_variables();
+            assert_eq!(msg.jsonnet, r#"a "'" + b + "'""#);
+        }
     }
 }
 

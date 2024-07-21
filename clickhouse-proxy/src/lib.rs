@@ -19,6 +19,10 @@ use tracing::*;
 
 use sqlsonnet::{FsResolver, Queries, Query};
 
+lazy_static::lazy_static! {
+    pub static ref VARIABLE_RE: regex::Regex = regex::Regex::new(r#"\$\{(.*?)\}"#).unwrap();
+}
+
 /// Reverse proxies a Clickhouse HTTP server, transforming Jsonnet or JSON queries into SQL.
 ///
 /// WARN: For now, the server assumes that the client are trusted. For example, they might be able
