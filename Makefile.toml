@@ -69,6 +69,20 @@ touch docs/.nojekyll
 tree -a docs
 '''
 
+[tasks.update-pages-branch]
+dependencies = ["playground-wasm"]
+script = '''
+#!/usr/bin/env bash
+set -euo pipefail
+
+git branch -f pages main
+git checkout pages
+git add docs
+git commit -m Playground
+git checkout main
+git --no-pager log pages -n1
+'''
+
 [tasks.playground-wasm-run]
 extend = "playground-proxy-run"
 env = { "VITE_PROXY" = "0" }
