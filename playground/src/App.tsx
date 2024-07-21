@@ -4,6 +4,7 @@ import { useDebouncedCallback } from "use-debounce";
 
 import init, { to_sql, InitOutput } from "sqlsonnet";
 import "./App.css";
+import logo from "./../../logo.png";
 
 import "bootstrap/dist/css/bootstrap.min.css";
 
@@ -225,15 +226,33 @@ function App() {
 
   return (
     <>
-      {proxy ? (
-        <></>
-      ) : (
-        <p>
-          This demo runs in your browser, using a{" "}
-          <a href="https://en.wikipedia.org/wiki/WebAssembly">WebAssembly</a>{" "}
-          build of <a href="https://github.com/cpg314/sqlsonnet">sqlsonnet</a>.
-        </p>
-      )}
+      <div className="row mb-2">
+        <h1 className="mt-2">
+          <img
+            style={{ height: "50px" }}
+            alt="sqlsonnet"
+            title="sqlsonnet"
+            src={logo}
+          />{" "}
+          playground
+        </h1>
+        {proxy ? (
+          <p>
+            The Jsonnet input (left) is sent to the server via a{" "}
+            <a href="https://en.wikipedia.org/wiki/WebSocket">WebSocket</a>,
+            which returns the generated SQL (right), using the embedded library.
+            The prelude is prepended to the input automatically. When desired,
+            the query can be send for execution to the Clickhouse server.
+          </p>
+        ) : (
+          <p>
+            This demo runs in your browser, using a{" "}
+            <a href="https://en.wikipedia.org/wiki/WebAssembly">WebAssembly</a>{" "}
+            build of <a href="https://github.com/cpg314/sqlsonnet">sqlsonnet</a>
+            .
+          </p>
+        )}
+      </div>
       <div className="row">
         <div className="col-6">
           <Editor

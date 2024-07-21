@@ -1,4 +1,4 @@
-# sqlsonnet
+![sqlsonnet](logo.png)
 
 > [!WARNING]  
 > Work in progress.
@@ -25,7 +25,35 @@ LIMIT 10;
 
 This becomes particularly useful when working with sets of complex queries, which can be created and maintained in a composable way, like source code, benefiting from the Jsonnet ecosystem (language server, formatter, linter, editor integrations).
 
-**In-browser demo with Webassembly**: https://cpg314.github.io/sqlsonnet/
+In-browser playground/demo with [WebAssembly](https://en.wikipedia.org/wiki/WebAssembly): see https://cpg314.github.io/sqlsonnet/
+
+### Features
+
+- Command-line interface to convert sqlsonnet to SQL, and vice-versa.
+  - Good error reporting thanks to [miette](https://docs.rs/miette/latest/miette/index.html).
+- Compatible with existing Jsonnet tools (formatter, LSP).
+- Proxy server for Clickhouse (HTTP interface), supporting incoming sqlsonnet or SQL.
+  - Shared library and prelude.
+  - Response caching (similarly to [chproxy](https://www.chproxy.org/)).
+  - Interactive playground.
+- Bindings for [WebAssembly](https://en.wikipedia.org/wiki/WebAssembly).
+- In-browser [interactive playground](https://cpg314.github.io/sqlsonnet/), using the WebAssembly bindings.
+
+## Installation
+
+The [releases page](https://github.com/cpg314/sqlsonnet/releases) contains binaries (simple `tar` archive, Debian/Ubuntu `.deb` package, ArchLinux `.pkg`).
+
+A [Docker image](https://github.com/cpg314/sqlsonnet/pkgs/container/sqlsonnet) with `sqlsonnet` and `sqlsonnet_clickhouse_proxy` is also available at `ghcr.io/cpg314/sqlsonnet:0.1.1`.
+
+Alternatively, see below for building from source.
+
+### Recommended tools
+
+- The [jsonnet language server](https://github.com/grafana/jsonnet-language-server).
+- The [jsonnetfmt formatter](https://github.com/google/go-jsonnet/tree/master).
+- The jsonnet integration for your favourite editor.
+
+See also the official [Jsonnet Tools page](https://jsonnet.org/learning/tools.html).
 
 ## Command line interface
 
@@ -105,34 +133,6 @@ _Examples_
 ```console
 $ sqlsonnet from-sql test.sql
 $ cat test.sql| sqlsonnet from-sql -
-```
-
-## Installation
-
-The [releases page](https://github.com/cpg314/sqlsonnet/releases) contains binaries (simple `tar` archive, Debian/Ubuntu `.deb` package, ArchLinux `.pkg`).
-
-A [Docker image](https://github.com/cpg314/sqlsonnet/pkgs/container/sqlsonnet) with `sqlsonnet` and `sqlsonnet_clickhouse_proxy` is also available at `ghcr.io/cpg314/sqlsonnet:0.1.1`.
-
-### Recommended tools
-
-- The [jsonnet language server](https://github.com/grafana/jsonnet-language-server).
-- The [jsonnetfmt formatter](https://github.com/google/go-jsonnet/tree/master).
-- The jsonnet integration for your favourite editor.
-
-See also the official [Jsonnet Tools page](https://jsonnet.org/learning/tools.html).
-
-### Building from source
-
-Install [cargo make](https://github.com/sagiegurari/cargo-make) and run:
-
-```
-$ cargo make packages
-$ # To also build a docker image:
-$ cargo make docker
-$ # Build wasm bindings
-$ cargo make wasm
-$ # Build playground
-$ cargo make playground-wasm
 ```
 
 ## Syntax
@@ -292,4 +292,18 @@ Input SQL is parsed into the internal representation using the [pest PEG parser]
 ```mermaid
 flowchart LR
  SQL --pest--> I[Internal representation] --serde--> JSON --> Jsonnet
+```
+
+## Building from source
+
+Install [cargo make](https://github.com/sagiegurari/cargo-make) and run:
+
+```
+$ cargo make packages
+$ # To also build a docker image:
+$ cargo make docker
+$ # Build wasm bindings
+$ cargo make wasm
+$ # Build playground
+$ cargo make playground-wasm
 ```
