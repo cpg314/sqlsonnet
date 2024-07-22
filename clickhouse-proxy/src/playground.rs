@@ -62,14 +62,13 @@ mod websocket {
         fn decode(message: Result<ws::Message, axum::Error>) -> Result<Self, WebsocketError> {
             Ok(serde_json::from_str(&message?.into_text()?)?)
         }
+        // Replace ${var} by var.
+        // In Grafana, u.string(${var:singlequote}) will be replaced by u.string('value'),
+        // which is '"' + 'value' + '"'
         fn replace_variables(mut self) -> Self {
             self.jsonnet = VARIABLE_RE
                 .replace_all(&self.jsonnet, |caps: &regex::Captures| {
-                    let ident = caps.get(1).unwrap().as_str();
-                    match caps.get(2).map(|c| c.as_str()) {
-                        Some(":singlequote") => format!(r#""'" + {} + "'""#, ident),
-                        _ => ident.to_string(),
-                    }
+                    caps.get(1).unwrap().as_str().to_string()
                 })
                 .to_string();
             self
@@ -192,7 +191,7 @@ mod websocket {
                 ..Default::default()
             }
             .replace_variables();
-            assert_eq!(msg.jsonnet, r#"a "'" + b + "'""#);
+            assert_eq!(msg.jsonnet, "a b");
         }
     }
 }
