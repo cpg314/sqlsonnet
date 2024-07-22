@@ -144,22 +144,7 @@ mod websocket {
     ) -> Result<Response, Error> {
         info!("Handling websocket message");
         // TODO: Do the CPU-bound operations in a thread
-        let message = Message::decode(message)?.replace_variables();
-        let sql = decode_query(&message.jsonnet, state.clone(), false, Some(ROWS_LIMIT))?;
-        let data = if message.clickhouse {
-            let resp = state
-                .send_query(ClickhouseQuery {
-                    query: sql.clone(),
-                    params: BTreeMap::from([("default_format".into(), FORMAT.into())]),
-                })
-                .await?;
-            let resp = axum::body::to_bytes(resp.into_body(), RESP_LIMIT)
-                .await
-                .map_err(Error::ConvertBody)?;
-            Some(String::from_utf8_lossy(&resp).to_string())
-        } else {
-            None
-        };
+        let message = Message::decode(message)?;
         let share = if message.share {
             let data = message.jsonnet.trim();
             let mut hasher = DefaultHasher::default();
@@ -172,6 +157,22 @@ mod websocket {
                 std::fs::write(dest, data).map_err(crate::SharingError::from)?;
             }
             Some(id)
+        } else {
+            None
+        };
+        let message = message.replace_variables();
+        let sql = decode_query(&message.jsonnet, state.clone(), false, Some(ROWS_LIMIT))?;
+        let data = if message.clickhouse {
+            let resp = state
+                .send_query(ClickhouseQuery {
+                    query: sql.clone(),
+                    params: BTreeMap::from([("default_format".into(), FORMAT.into())]),
+                })
+                .await?;
+            let resp = axum::body::to_bytes(resp.into_body(), RESP_LIMIT)
+                .await
+                .map_err(Error::ConvertBody)?;
+            Some(String::from_utf8_lossy(&resp).to_string())
         } else {
             None
         };
