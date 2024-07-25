@@ -1,0 +1,9 @@
+[package]
+name = "clickhouse-client"
+version.workspace = true
+edition = "2021"
+
+
+[dependencies]
+reqwest.workspace = true
+serde.workspace = true

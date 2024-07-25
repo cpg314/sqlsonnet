@@ -14,9 +14,9 @@ use axum::response::IntoResponse;
 use clap::Parser;
 use itertools::Itertools;
 use metrics_exporter_prometheus::PrometheusBuilder;
-use serde::{Deserialize, Serialize};
 use tracing::*;
 
+use clickhouse_client::ClickhouseQuery;
 use sqlsonnet::{FsResolver, Queries, Query};
 
 lazy_static::lazy_static! {
@@ -30,14 +30,9 @@ lazy_static::lazy_static! {
 #[derive(Clone, Parser)]
 #[clap(version)]
 pub struct Flags {
-    // URL to the Clickhouse HTTP endpoint
+    // URL to the Clickhouse HTTP endpoint, with username and password if necessary
     #[clap(long, env = "CLICKHOUSE_URL")]
     pub url: reqwest::Url,
-    /// Clickhouse username
-    #[clap(long, env = "CLICKHOUSE_USERNAME")]
-    pub username: String,
-    #[clap(long, env = "CLICKHOUSE_PASSWORD")]
-    pub password: Option<String>,
     #[clap(long)]
     pub cache: Option<PathBuf>,
     /// Folder with Jsonnet library files
@@ -102,19 +97,6 @@ async fn handle_query(
         .await
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
-pub struct ClickhouseQuery {
-    query: String,
-    params: BTreeMap<String, String>,
-}
-impl ClickhouseQuery {
-    fn heartbeat() -> Self {
-        Self {
-            query: "SELECT 1+1".into(),
-            params: Default::default(),
-        }
-    }
-}
 pub struct PreparedRequest {
     id: u64,
     query: Option<ClickhouseQuery>,
@@ -138,7 +120,7 @@ impl PreparedRequest {
 
 #[derive(Clone)]
 struct State {
-    client: reqwest::Client,
+    client: clickhouse_client::HttpClient,
     args: Arc<Flags>,
     resolver: Arc<FsResolver>,
     cache: Option<Arc<cache::Cache>>,
@@ -147,7 +129,7 @@ struct State {
 impl State {
     fn new(args: &Flags) -> Result<Self, Error> {
         Ok(Self {
-            client: reqwest::Client::new(),
+            client: clickhouse_client::HttpClient::new(args.url.clone()),
             resolver: sqlsonnet::FsResolver::new(
                 args.library.clone().map(|p| vec![p]).unwrap_or_default(),
             )
@@ -177,24 +159,15 @@ impl State {
         // Hash query
         let mut hasher = DefaultHasher::default();
         query.hash(&mut hasher);
-        self.args.username.hash(&mut hasher);
-        self.args.password.hash(&mut hasher);
-        let inner = self
-            .client
-            .post(self.args.url.clone())
-            .body(query.query.clone())
-            .query(&query.params)
-            .header(reqwest::header::TRANSFER_ENCODING, "chunked")
-            .basic_auth(&self.args.username, self.args.password.clone());
+        let builder = self.client.prepare_request(&query);
         PreparedRequest {
             id: hasher.finish(),
             query: Some(query),
-            builder: inner,
+            builder,
         }
     }
     async fn send_query(&self, query: ClickhouseQuery) -> Result<axum::response::Response, Error> {
         let request = self.prepare_request(query);
-
         if let Some(cache) = &self.cache {
             Ok(cache.process(request).await?)
         } else {
@@ -208,7 +181,10 @@ impl State {
     }
     async fn test_clickhouse(&self) -> Result<(), ClickhouseError> {
         let resp = self
-            .prepare_request(ClickhouseQuery::heartbeat())
+            .prepare_request(ClickhouseQuery {
+                query: "SELECT 1+1".into(),
+                params: Default::default(),
+            })
             .send()
             .await?;
         let headers = resp.headers().clone();

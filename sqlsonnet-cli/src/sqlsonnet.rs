@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::io::IsTerminal;
 use std::str::FromStr;
 
@@ -22,6 +23,8 @@ enum Error {
     Bat(#[from] bat::error::Error),
     #[error(transparent)]
     Miette(#[from] miette::InstallError),
+    #[error("Failed to execute query")]
+    Clickhouse(#[from] reqwest::Error),
 }
 
 #[derive(Parser)]
@@ -44,6 +47,12 @@ struct Flags {
     diff: bool,
     #[clap(long, value_delimiter = ',')]
     display_format: Option<Vec<Language>>,
+    /// sqlsonnet proxy URL
+    #[clap(long, env = "SQLSONNET_PROXY")]
+    proxy_url: Option<reqwest::Url>,
+    /// Send query to Clickhouse proxy (--proxy-url) for execution
+    #[clap(long, short, conflicts_with = "from_sql", requires = "proxy_url")]
+    execute: bool,
 }
 
 #[derive(Clone)]
@@ -115,14 +124,18 @@ fn highlight<T: std::fmt::Display>(
     Ok(())
 }
 
-fn main() -> miette::Result<()> {
-    Ok(main_impl()?)
+#[tokio::main]
+async fn main() -> miette::Result<()> {
+    Ok(main_impl().await?)
 }
 
-fn main_impl() -> Result<(), Error> {
+async fn main_impl() -> Result<(), Error> {
     let start = std::time::Instant::now();
     sqlsonnet::setup_logging();
-    let args = Flags::parse();
+    let mut args = Flags::parse();
+    if !args.execute {
+        args.proxy_url = None;
+    }
 
     let assets = bat::assets::HighlightingAssets::from_binary();
     let theme = assets.get_theme(
@@ -151,6 +164,12 @@ fn main_impl() -> Result<(), Error> {
             Language::Sql
         }]
     });
+
+    let client = args
+        .proxy_url
+        .clone()
+        .map(clickhouse_client::HttpClient::new);
+
     let filename = args.input.filename();
     let input = args.input.contents()?;
     if args.from_sql {
@@ -183,6 +202,23 @@ fn main_impl() -> Result<(), Error> {
         }
         if has(Language::Sql) {
             highlight(queries.to_sql(args.compact), Language::Sql, &args)?;
+        }
+        if let Some(client) = client {
+            info!("Executing query on Clickhouse");
+            for query in queries {
+                let resp = client
+                    .send_query(&clickhouse_client::ClickhouseQuery {
+                        query: query.to_sql(false),
+                        params: BTreeMap::from([(
+                            "default_format".into(),
+                            "PrettyMonoBlock".into(),
+                        )]),
+                    })
+                    .await?
+                    .text()
+                    .await?;
+                println!("{}", resp);
+            }
         }
     }
 

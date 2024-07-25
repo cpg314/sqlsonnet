@@ -76,6 +76,10 @@ Options:
           With --from-sql: Convert back to SQL and print the differences with the original, if any
       --display-format <DISPLAY_FORMAT>
           [possible values: sql, jsonnet, json]
+      --proxy-url <PROXY_URL>
+          sqlsonnet proxy URL [env: SQLSONNET_PROXY=]
+  -e, --execute
+          Send query to Clickhouse proxy (--proxy-url) for execution
   -h, --help
           Print help
   -V, --version

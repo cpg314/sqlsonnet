@@ -9,6 +9,7 @@ path = "src/sqlsonnet.rs"
 
 [dependencies]
 sqlsonnet = { path = "../sqlsonnet", features = ["fancy"] }
+clickhouse-client = { path = "../clickhouse-client" }
 
 bat = { version = "0.24.0", default-features = false }
 clap-stdin = "0.4.0"
@@ -17,7 +18,9 @@ miette = { version = "7.2.0", features = ["fancy", "syntect-highlighter"] }
 lazy_static.workspace = true
 pretty_assertions = "1.4.0"
 thiserror.workspace = true
+tokio.workspace = true
 tracing.workspace = true
+reqwest.workspace = true
 
 [dev-dependencies]
 anyhow.workspace = true

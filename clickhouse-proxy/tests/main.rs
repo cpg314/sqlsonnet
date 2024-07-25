@@ -27,9 +27,7 @@ async fn main() -> anyhow::Result<()> {
     drop(listener);
     let cache = tempfile::tempdir()?;
     let _server = tokio::spawn(clickhouse_proxy::main_impl(clickhouse_proxy::Flags {
-        url: reqwest::Url::parse(&format!("http://{}", fake_chaddr))?,
-        username: "default".into(),
-        password: None,
+        url: reqwest::Url::parse(&format!("http://default@{}", fake_chaddr))?,
         cache: Some(cache.path().into()),
         library: None,
         prelude: None,
