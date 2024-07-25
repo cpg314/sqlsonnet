@@ -25,6 +25,8 @@ pub enum Error {
     Sharing(#[from] SharingError),
     #[error(transparent)]
     Websocket(#[from] WebsocketError),
+    #[error("jsonnetfmt error: {0}")]
+    JsonnetFmt(String),
 }
 
 #[derive(thiserror::Error, Debug)]

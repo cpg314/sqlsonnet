@@ -15,7 +15,7 @@ import "codemirror/lib/codemirror.css";
 import "codemirror/mode/sql/sql.js";
 // @ts-ignore
 import { jsonnet } from "./jsonnet.js";
-import { UnControlled as CodeMirror } from "react-codemirror2";
+import { Controlled as CodeMirror } from "react-codemirror2";
 
 type Location = [line: number, col: number];
 
@@ -89,7 +89,7 @@ function Editor({
       onKeyUp={(editor, event) => {
         onKeyUp(editor.getValue(), event);
       }}
-      onChange={(_editor, _data, value) => {
+      onBeforeChange={(_editor, _data, value) => {
         onChange(value);
       }}
       // @ts-ignore
@@ -125,7 +125,6 @@ function App() {
   // We need to use another state because the Controlled version of the editor has a bug
   // with React 18, and updating the value on change of the Uncontrolled version does not work.
   // https://github.com/scniro/react-codemirror2/issues/313
-  const [jsonnet2, setJsonnet2] = useState("");
   const [shareLink, setShareLink] = useState("");
   const [data, setData] = useState("");
   const [location, setLocation] = useState(null);
@@ -163,7 +162,7 @@ function App() {
   };
 
   const refresh = (data: string) => {
-    setJsonnet2(data);
+    setJsonnet(data);
     setAlert(null);
     setLocation(null);
     setData("");
@@ -285,7 +284,7 @@ function App() {
             <button
               onClick={(e: React.MouseEvent<HTMLElement>) => {
                 e.preventDefault();
-                sendJsonMessage({ jsonnet: jsonnet2, clickhouse: true });
+                sendJsonMessage({ jsonnet: jsonnet, clickhouse: true });
               }}
               className="btn btn-primary me-2"
             >
@@ -295,12 +294,22 @@ function App() {
               href=""
               onClick={(e) => {
                 e.preventDefault();
-                sendJsonMessage({ jsonnet: jsonnet2, share: true });
+                sendJsonMessage({ jsonnet: jsonnet, share: true });
               }}
-              id="share"
               className="btn btn-secondary btn-sm"
             >
               Share
+            </a>
+            &nbsp;
+            <a
+              href=""
+              onClick={(e) => {
+                e.preventDefault();
+                sendJsonMessage({ jsonnet: jsonnet, format: true });
+              }}
+              className="btn btn-secondary btn-sm"
+            >
+              Format
             </a>
             <div className="form-text">
               {shareLink.length > 0 ? (

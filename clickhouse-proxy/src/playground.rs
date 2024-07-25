@@ -1,7 +1,9 @@
 use std::collections::{BTreeMap, HashMap};
 use std::hash::{DefaultHasher, Hash, Hasher};
 
+use regex::Replacer;
 use serde::{Deserialize, Serialize};
+use tokio::io::AsyncWriteExt;
 use tracing::*;
 
 use super::{decode_query, ClickhouseQuery, Error, SharingError, State};
@@ -13,6 +15,9 @@ const FORMAT: &str = "PrettyMonoBlock";
 static PROJECT_DIR: include_dir::Dir<'_> = include_dir::include_dir!("playground/dist-proxy");
 
 lazy_static::lazy_static! {
+    pub static ref VARIABLE_PLACEHOLDER_RE: regex::Regex = {
+        regex::Regex::new(r#"JSONNETFMT(\d+)"#).unwrap()
+    };
     pub static ref VARIABLE_RE: regex::Regex = {
         regex::Regex::new(r#"\$\{([a-z_A-Z0-9]+)(:[a-z]+)?\}"#).unwrap()
     };
@@ -42,6 +47,58 @@ async fn serve(
     Ok(([(axum::http::header::CONTENT_TYPE, mime)], file.contents()))
 }
 
+struct IndexReplacer<F: Fn(usize) -> String> {
+    i: usize,
+    f: F,
+}
+impl<F: Fn(usize) -> String> Replacer for IndexReplacer<F> {
+    fn replace_append(&mut self, _caps: &regex::Captures<'_>, dst: &mut String) {
+        dst.push_str(&(self.f)(self.i));
+        self.i += 1;
+    }
+}
+async fn jsonnetfmt(data: &str) -> anyhow::Result<String> {
+    // Replace Grafana variables by placeholders
+    let variables: Vec<_> = VARIABLE_RE.captures_iter(data).collect();
+    let data = VARIABLE_RE.replace_all(
+        data,
+        IndexReplacer {
+            i: 0,
+            f: |i| format!("JSONNETFMT{}", i),
+        },
+    );
+
+    let mut process = tokio::process::Command::new("jsonnetfmt")
+        .arg("-")
+        .stdin(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()?;
+    let mut stdin = process.stdin.take().unwrap();
+    stdin.write_all(data.as_bytes()).await?;
+    drop(stdin);
+    let output = process.wait_with_output().await?;
+    anyhow::ensure!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let out = String::from_utf8(output.stdout)?;
+
+    // Put back the variables
+    let out = VARIABLE_PLACEHOLDER_RE
+        .replace_all(
+            &out,
+            IndexReplacer {
+                i: 0,
+                f: |i| variables[i].get(0).unwrap().as_str().to_string(),
+            },
+        )
+        .to_string();
+
+    Ok(out)
+}
+
 mod websocket {
     use super::*;
     use crate::error::WebsocketError;
@@ -57,6 +114,8 @@ mod websocket {
         // Create a share
         #[serde(default)]
         share: bool,
+        #[serde(default)]
+        format: bool,
     }
     impl Message {
         fn decode(message: Result<ws::Message, axum::Error>) -> Result<Self, WebsocketError> {
@@ -158,6 +217,16 @@ mod websocket {
             Some(id)
         } else {
             None
+        };
+        if message.format {
+            return Ok(Response {
+                initial: Some(
+                    jsonnetfmt(&message.jsonnet)
+                        .await
+                        .map_err(|e| Error::JsonnetFmt(e.to_string()))?,
+                ),
+                ..Default::default()
+            });
         };
         let message = message.replace_variables();
         let sql = decode_query(&message.jsonnet, state.clone(), false, Some(ROWS_LIMIT))?;
