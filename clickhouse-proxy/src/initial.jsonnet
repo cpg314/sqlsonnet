@@ -8,7 +8,7 @@ local var2 = 'test';
       ${var1},
       // ${var2} would produce the identifier `test`
       // '${var2}' would produce the string 'test'
-      u.as(${var2:singlequote}, "a_string"),
+      u.as(u.string(${var2:singlequote}), "a_string"),
     ],
   }
 }
