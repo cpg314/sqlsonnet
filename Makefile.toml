@@ -16,8 +16,6 @@ script = '''
 set -euo pipefail
 COMMAND="cargo run -q -r --bin sqlsonnet --"
 eval $COMMAND --help
-eval $COMMAND to-sql --help
-eval $COMMAND from-sql --help
 '''
 
 [tasks.cross]

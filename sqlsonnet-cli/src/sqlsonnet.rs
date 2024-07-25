@@ -31,36 +31,19 @@ struct Flags {
     #[clap(long, env = "SQLSONNET_THEME",
            value_parser=clap::builder::PossibleValuesParser::new(THEMES.iter().map(|s| s.as_str())))]
     theme: Option<String>,
-    #[clap(subcommand)]
-    command: Command,
     /// Compact SQL representation
     #[clap(long, short)]
     compact: bool,
-}
-
-#[derive(Parser)]
-enum Command {
-    /// Convert SQL to Jsonnet
-    #[clap(alias = "f")]
-    FromSql {
-        /// Input file (path or - for stdin).
-        input: Input,
-        #[clap(long, value_delimiter = ',', default_value = "jsonnet")]
-        /// Display the converted Jsonnet output and/or the SQL roundtrip
-        display_format: Vec<Language>,
-        /// Convert back to SQL and print the differences with the original, if any
-        #[clap(long)]
-        diff: bool,
-    },
-    /// Convert Jsonnet to SQL
-    #[clap(alias = "t")]
-    ToSql {
-        /// Input file (path or - for stdin).
-        input: Input,
-        #[clap(long, value_delimiter = ',', default_value = "sql")]
-        /// Display the converted SQL, the intermediary Json, or the original Jsonnet.
-        display_format: Vec<Language>,
-    },
+    /// Input file (path or - for stdin).
+    input: Input,
+    /// Convert an SQL file into Jsonnet.
+    #[clap(long, short)]
+    from_sql: bool,
+    /// With --from-sql: Convert back to SQL and print the differences with the original, if any.
+    #[clap(long, requires = "from_sql")]
+    diff: bool,
+    #[clap(long, value_delimiter = ',')]
+    display_format: Option<Vec<Language>>,
 }
 
 #[derive(Clone)]
@@ -161,49 +144,45 @@ fn main_impl() -> Result<(), Error> {
         )
     }))?;
 
-    match &args.command {
-        Command::ToSql {
-            input,
-            display_format,
-        } => {
-            let filename = input.filename();
-            let contents = input.contents()?;
-            let contents = sqlsonnet::import_utils() + &contents;
-            info!("Converting Jsonnet file {} to SQL", filename);
-
-            // TODO: Support passing a single query.
-            let queries = Queries::from_jsonnet(&contents, input.resolver())?;
-
-            let has = |l| display_format.iter().any(|l2| l2 == &l);
-            // Display queries
-            debug!("{:#?}", queries);
-            if has(Language::Jsonnet) {
-                highlight(&contents, Language::Jsonnet, &args)?;
-            }
-            if has(Language::Sql) {
-                highlight(queries.to_sql(args.compact), Language::Sql, &args)?;
-            }
+    let display_format = args.display_format.clone().unwrap_or_else(|| {
+        vec![if args.from_sql {
+            Language::Jsonnet
+        } else {
+            Language::Sql
+        }]
+    });
+    let filename = args.input.filename();
+    let input = args.input.contents()?;
+    if args.from_sql {
+        info!("Converting SQL file {}", filename);
+        let queries = Queries::from_sql(&input)?;
+        let has = |l| display_format.iter().any(|l2| l2 == &l);
+        let sql = queries.to_sql(args.compact);
+        if has(Language::Sql) {
+            highlight(&sql, Language::Sql, &args)?;
         }
-        Command::FromSql {
-            input,
-            display_format,
-            diff,
-        } => {
-            info!("Converting SQL file {}", input.filename());
-            let input = input.contents()?;
-            let queries = Queries::from_sql(&input)?;
-            let has = |l| display_format.iter().any(|l2| l2 == &l);
-            let sql = queries.to_sql(args.compact);
-            if has(Language::Sql) {
-                highlight(&sql, Language::Sql, &args)?;
-            }
-            if has(Language::Jsonnet) {
-                let jsonnet = queries.as_jsonnet();
-                highlight(jsonnet, Language::Jsonnet, &args)?;
-            }
-            if *diff && input != sql {
-                println!("{}", pretty_assertions::StrComparison::new(&input, &sql));
-            }
+        if has(Language::Jsonnet) {
+            let jsonnet = queries.as_jsonnet();
+            highlight(jsonnet, Language::Jsonnet, &args)?;
+        }
+        if args.diff && input != sql {
+            println!("{}", pretty_assertions::StrComparison::new(&input, &sql));
+        }
+    } else {
+        let contents = sqlsonnet::import_utils() + &input;
+        info!("Converting Jsonnet file {} to SQL", filename);
+
+        // TODO: Support passing a single query.
+        let queries = Queries::from_jsonnet(&contents, args.input.resolver())?;
+
+        let has = |l| display_format.iter().any(|l2| l2 == &l);
+        // Display queries
+        debug!("{:#?}", queries);
+        if has(Language::Jsonnet) {
+            highlight(&contents, Language::Jsonnet, &args)?;
+        }
+        if has(Language::Sql) {
+            highlight(queries.to_sql(args.compact), Language::Sql, &args)?;
         }
     }
 

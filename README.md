@@ -60,31 +60,36 @@ See also the official [Jsonnet Tools page](https://jsonnet.org/learning/tools.ht
 The `sqlsonnet` command line interface converts Jsonnet statements to (and to a lesser extent from) SQL.
 
 ```
-Usage: sqlsonnet [OPTIONS] <COMMAND>
-
-Commands:
-  from-sql  Convert SQL to Jsonnet
-  to-sql    Convert Jsonnet to SQL
-  help      Print this message or the help of the given subcommand(s)
-
-Options:
-      --theme <THEME>  Color theme for syntax highlighting [env: SQLSONNET_THEME=Nord] [possible values: 1337, Coldark-Cold, Coldark-Dark, DarkNeon, Dracula, GitHub, "Monokai Extended", "Monokai Extended Bright", "Monokai Extended Light", "Monokai Extended Origin", Nord, OneHalfDark, OneHalfLight, "Solarized (dark)", "Solarized (light)", "Sublime Snazzy", TwoDark, "Visual Studio Dark+", ansi, base16, base16-256, gruvbox-dark, gruvbox-light, zenburn]
-  -c, --compact        Compact SQL representation
-  -h, --help           Print help
-  -V, --version        Print version
-```
-
-#### Jsonnet to SQL (`to-sql`)
-
-```text
-Usage: sqlsonnet to-sql [OPTIONS] <INPUT>
+Usage: sqlsonnet [OPTIONS] <INPUT>
 
 Arguments:
   <INPUT>  Input file (path or - for stdin)
 
 Options:
+      --theme <THEME>
+          Color theme for syntax highlighting [env: SQLSONNET_THEME=Nord] [possible values: 1337, Coldark-Cold, Coldark-Dark, DarkNeon, Dracula, GitHub, "Monokai Extended", "Monokai Extended Bright", "Monokai Extended Light", "Monokai Extended Origin", Nord, OneHalfDark, OneHalfLight, "Solarized (dark)", "Solarized (light)", "Sublime Snazzy", TwoDark, "Visual Studio Dark+", ansi, base16, base16-256, gruvbox-dark, gruvbox-light, zenburn]
+  -c, --compact
+          Compact SQL representation
+  -f, --from-sql
+          Convert an SQL file into Jsonnet
+      --diff
+          With --from-sql: Convert back to SQL and print the differences with the original, if any
       --display-format <DISPLAY_FORMAT>
-          Display the converted SQL, the intermediary Json, or the original Jsonnet [default: sql] [possible values: sql, jsonnet, json]
+          [possible values: sql, jsonnet, json]
+  -h, --help
+          Print help
+  -V, --version
+          Print version
+```
+
+#### Jsonnet to SQL
+
+```console
+$ sqlsonnet test.jsonnet
+$ # stdin input is also supported
+$ cat test.jsonnet | sqlsonnet -
+$ # Piping into clickhouse client
+$ sqlsonnet test.jsonnet | clickhouse client -f PrettyMonoBlock --multiquery --host ... --user ...
 ```
 
 The input should represent a list of queries, e.g.
@@ -99,41 +104,16 @@ The [embedded utility functions](sqlsonnet/utils.libsonnet) are automatically im
 local u = import "sqlsonnet.libsonnet";
 ```
 
-_Examples_
+#### SQL to Jsonnet (`from-sql`)
 
 ```console
-$ sqlsonnet to-sql test.jsonnet
-$ # stdin input is also supported
-$ cat test.jsonnet | sqlsonnet to-sql -
-$ # Piping into clickhouse client
-$ sqlsonnet to-sql test.jsonnet | clickhouse client -f PrettyMonoBlock --multiquery --host ... --user ...
+$ sqlsonnet --from-sql test.sql
+$ cat test.sql | sqlsonnet --from-sql -
 ```
-
-#### SQL to Jsonnet (`from-sql`)
 
 This mode is useful to discover the sqlsonnet syntax from SQL queries.
 
 The parser is far from perfect. Expressions are parsed as long as subqueries are encountered; then they are simply represented as strings. The results do not use the [embedded utility functions](sqlsonnet/utils.libsonnet), which can significantly simplify expressions.
-
-```
-Usage: sqlsonnet from-sql [OPTIONS] <INPUT>
-
-Arguments:
-  <INPUT>  Input file (path or - for stdin)
-
-Options:
-      --display-format <DISPLAY_FORMAT>
-          Display the converted Jsonnet output and/or the SQL roundtrip [default: jsonnet] [possible values: sql, jsonnet, json]
-      --diff
-          Convert back to SQL and print the differences with the original, if any
-```
-
-_Examples_
-
-```console
-$ sqlsonnet from-sql test.sql
-$ cat test.sql| sqlsonnet from-sql -
-```
 
 ## Syntax
 
