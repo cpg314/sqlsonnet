@@ -24,7 +24,7 @@ enum Error {
     #[error(transparent)]
     Miette(#[from] miette::InstallError),
     #[error("Failed to execute query")]
-    Clickhouse(#[from] reqwest::Error),
+    Clickhouse(#[from] clickhouse_client::Error),
 }
 
 #[derive(Parser)]
@@ -216,7 +216,8 @@ async fn main_impl() -> Result<(), Error> {
                     })
                     .await?
                     .text()
-                    .await?;
+                    .await
+                    .map_err(clickhouse_client::Error::from)?;
                 println!("{}", resp);
             }
         }
