@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::io::IsTerminal;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use clap::Parser;
@@ -53,6 +54,9 @@ struct Flags {
     /// Send query to Clickhouse proxy (--proxy-url) for execution
     #[clap(long, short, conflicts_with = "from_sql", requires = "proxy_url")]
     execute: bool,
+    /// Library path
+    #[clap(long, short = 'J', env = "JSONNET_PATH")]
+    jpath: Option<PathBuf>,
 }
 
 #[derive(Clone)]
@@ -191,8 +195,13 @@ async fn main_impl() -> Result<(), Error> {
         let contents = sqlsonnet::import_utils() + &input;
         info!("Converting Jsonnet file {} to SQL", filename);
 
+        let mut resolver = args.input.resolver();
+        if let Some(jpath) = args.jpath.clone() {
+            resolver.add(jpath);
+        }
+
         // TODO: Support passing a single query.
-        let queries = Queries::from_jsonnet(&contents, args.input.resolver())?;
+        let queries = Queries::from_jsonnet(&contents, resolver)?;
 
         let has = |l| display_format.iter().any(|l2| l2 == &l);
         // Display queries

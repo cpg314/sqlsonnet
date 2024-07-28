@@ -78,6 +78,8 @@ Options:
           [possible values: sql, jsonnet, json]
       --proxy-url <PROXY_URL>
           sqlsonnet proxy URL [env: SQLSONNET_PROXY=]
+  -J, --jpath <JPATH>
+          Library path [env: JSONNET_PATH=]
   -e, --execute
           Send query to Clickhouse proxy (--proxy-url) for execution
   -h, --help

@@ -46,6 +46,9 @@ impl FsResolver {
                 .collect(),
         )
     }
+    pub fn add(&mut self, path: PathBuf) {
+        self.search_paths.push(path);
+    }
     pub fn new(search_paths: Vec<PathBuf>) -> Self {
         Self { search_paths }
     }
