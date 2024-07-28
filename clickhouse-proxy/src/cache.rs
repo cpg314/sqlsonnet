@@ -1,3 +1,6 @@
+// TODO:
+// - Set a timeout on queries, to avoid waiting forever on stuck queries.
+// - Change the Mutex<bool> to Mutex<Status>
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -11,7 +14,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
 use tracing::*;
 
-use super::error::{ClickhouseError, Error};
+use super::error::Error;
 use super::PreparedRequest;
 use crate::ClickhouseQuery;
 
@@ -111,7 +114,7 @@ impl Response {
             Ok::<_, CacheError>(())
         });
         let body = axum::body::Body::from_stream(body.map(move |buf| {
-            let buf = buf.map_err(ClickhouseError::QueryFailure)?;
+            let buf = buf.map_err(clickhouse_client::Error::from)?;
             tx.send(buf.clone()).map_err(|_| CacheError::SendBuf)?;
             Ok::<_, Error>(buf)
         }));
@@ -170,15 +173,13 @@ impl Cache {
         let id = request.id;
         let entry = self.entries.lock().await.get(&id).cloned();
         if let Some(entry) = entry {
-            info!("Already processing, waiting");
+            info!("Query already known, waiting for lock");
             let guard = entry.lock().await;
             if *guard {
                 warn!("This query previously failed to cache from being too large. Returning directly");
                 return Ok(http::response::Response::from(request.send().await?).into_response());
             }
-            metrics::counter!("concurrent-queries").increment(1);
         }
-        // Not already processing
         let filename = self.path.join(id.to_string());
         if filename.exists() {
             info!("Reading response from cache");

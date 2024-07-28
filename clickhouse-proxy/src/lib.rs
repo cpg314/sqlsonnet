@@ -100,7 +100,7 @@ async fn handle_query(
 pub struct PreparedRequest {
     id: u64,
     query: Option<ClickhouseQuery>,
-    builder: reqwest::RequestBuilder,
+    builder: clickhouse_client::PreparedRequest,
 }
 impl std::fmt::Debug for PreparedRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -112,9 +112,9 @@ impl PreparedRequest {
         self.query.take()
     }
     #[tracing::instrument()]
-    pub async fn send(self) -> Result<reqwest::Response, ClickhouseError> {
+    pub async fn send(self) -> Result<reqwest::Response, clickhouse_client::Error> {
         info!("Sending query to Clickhouse");
-        self.builder.send().await.map_err(ClickhouseError::from)
+        self.builder.send().await
     }
 }
 
@@ -179,18 +179,19 @@ impl State {
                 .into_response())
         }
     }
-    async fn test_clickhouse(&self) -> Result<(), ClickhouseError> {
+    async fn test_clickhouse(&self) -> Result<(), Error> {
         let resp = self
-            .prepare_request(ClickhouseQuery {
+            .client
+            .send_query(&ClickhouseQuery {
                 query: "SELECT 1+1".into(),
                 params: Default::default(),
             })
-            .send()
-            .await?;
-        let headers = resp.headers().clone();
-        let resp = resp.text().await?;
+            .await?
+            .text()
+            .await
+            .map_err(clickhouse_client::Error::from)?;
         if resp.trim() != "2" {
-            return Err(ClickhouseError::Connect(resp, headers));
+            return Err(Error::ClickhousePing(resp));
         }
         Ok(())
     }

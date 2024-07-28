@@ -10,7 +10,9 @@ pub enum Error {
     #[error("Sqlsonnet error: {0}")]
     SqlSonnet(#[from] sqlsonnet::Error),
     #[error("Clickhouse error: {0}")]
-    Clickhouse(#[from] ClickhouseError),
+    Clickhouse(#[from] clickhouse_client::Error),
+    #[error("Received unexpected response from Clickhouse: {0}")]
+    ClickhousePing(String),
     #[error("Cache error: {0}")]
     Cache(#[from] CacheError),
     #[error("Task panicked: {0}")]
@@ -44,14 +46,6 @@ pub enum SharingError {
     IO(#[from] std::io::Error),
     #[error("Invalid share ID")]
     InvalidId,
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum ClickhouseError {
-    #[error("Connection error {0} {1:?}")]
-    Connect(String, reqwest::header::HeaderMap),
-    #[error("Query execution failure: {0}")]
-    QueryFailure(#[from] reqwest::Error),
 }
 
 impl From<Error> for sqlsonnet::FormattedError {
