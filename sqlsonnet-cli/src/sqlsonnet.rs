@@ -55,8 +55,8 @@ struct Flags {
     #[clap(long, short, conflicts_with = "from_sql", requires = "proxy_url")]
     execute: bool,
     /// Library path
-    #[clap(long, short = 'J', env = "JSONNET_PATH")]
-    jpath: Option<PathBuf>,
+    #[clap(long, short = 'J', env = "JSONNET_PATH", value_delimiter = ',')]
+    jpath: Option<Vec<PathBuf>>,
 }
 
 #[derive(Clone)]
@@ -191,7 +191,9 @@ async fn main_impl() -> Result<(), Error> {
 
         let mut resolver = sqlsonnet::FsResolver::current_dir();
         if let Some(jpath) = args.jpath.clone() {
-            resolver.add(jpath);
+            for path in jpath {
+                resolver.add(path);
+            }
         }
 
         // TODO: Support passing a single query.
