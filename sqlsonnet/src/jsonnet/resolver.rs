@@ -29,13 +29,15 @@ impl<T: ImportResolver> ImportResolver for Arc<T> {
 pub struct FsResolver {
     search_paths: Vec<PathBuf>,
 }
-
 impl Default for FsResolver {
     fn default() -> Self {
         Self::new(vec![])
     }
 }
 impl FsResolver {
+    pub fn current_dir() -> Self {
+        Self::new(std::env::current_dir().map(|d| vec![d]).unwrap_or_default())
+    }
     pub fn from_filename(filename: impl AsRef<Path>) -> Self {
         Self::new(
             filename

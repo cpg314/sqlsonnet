@@ -79,12 +79,6 @@ impl Input {
             clap_stdin::Source::Arg(s) => s.clone(),
         }
     }
-    fn resolver(&self) -> sqlsonnet::FsResolver {
-        match &self.0.source {
-            clap_stdin::Source::Stdin => Default::default(),
-            clap_stdin::Source::Arg(s) => sqlsonnet::FsResolver::from_filename(s),
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ValueEnum)]
@@ -195,7 +189,7 @@ async fn main_impl() -> Result<(), Error> {
         let contents = sqlsonnet::import_utils() + &input;
         info!("Converting Jsonnet file {} to SQL", filename);
 
-        let mut resolver = args.input.resolver();
+        let mut resolver = sqlsonnet::FsResolver::current_dir();
         if let Some(jpath) = args.jpath.clone() {
             resolver.add(jpath);
         }

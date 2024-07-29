@@ -83,7 +83,6 @@ impl HttpClient {
             .body(query.query.clone())
             .query(&query.params)
             .header(reqwest::header::TRANSFER_ENCODING, "chunked");
-        println!("{:?}", query.compression);
         builder = builder.header(reqwest::header::ACCEPT_ENCODING, query.compression.name());
         PreparedRequest(builder)
     }
