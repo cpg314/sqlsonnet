@@ -235,6 +235,9 @@ mod websocket {
                 .send_query(ClickhouseQuery {
                     query: sql.clone(),
                     params: BTreeMap::from([("default_format".into(), FORMAT.into())]),
+                    // We can't ask for compression here, because the client does not have
+                    // decompression enabled.
+                    compression: clickhouse_client::Compression::None,
                 })
                 .await?;
             let resp = axum::body::to_bytes(resp.into_body(), RESP_LIMIT)

@@ -17,9 +17,41 @@ pub enum Error {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Hash)]
+pub enum Compression {
+    None,
+    Zstd,
+    Gzip,
+}
+impl Compression {
+    fn name(&self) -> &'static str {
+        match self {
+            Compression::None => "",
+            Compression::Zstd => "zstd",
+            Compression::Gzip => "gzip",
+        }
+    }
+    pub fn from_headers(hm: &reqwest::header::HeaderMap) -> Self {
+        hm.get(reqwest::header::ACCEPT_ENCODING)
+            .and_then(|h| h.to_str().ok())
+            .and_then(|h| {
+                // TODO: Do this in a compliant manner
+                if h.contains("zstd") {
+                    Some(Self::Zstd)
+                } else if h.contains("gzip") {
+                    Some(Self::Gzip)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(Self::None)
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct ClickhouseQuery {
     pub query: String,
     pub params: BTreeMap<String, String>,
+    pub compression: Compression,
 }
 
 pub struct PreparedRequest(reqwest::RequestBuilder);
@@ -34,20 +66,26 @@ impl PreparedRequest {
 }
 
 impl HttpClient {
-    pub fn new(url: reqwest::Url) -> Self {
+    pub fn new(url: reqwest::Url, decompression: bool) -> Self {
         Self {
             url,
-            client: reqwest::Client::new(),
+            client: reqwest::ClientBuilder::new()
+                .zstd(decompression)
+                .gzip(decompression)
+                .build()
+                .unwrap(),
         }
     }
     pub fn prepare_request(&self, query: &ClickhouseQuery) -> PreparedRequest {
-        PreparedRequest(
-            self.client
-                .post(self.url.clone())
-                .body(query.query.clone())
-                .query(&query.params)
-                .header(reqwest::header::TRANSFER_ENCODING, "chunked"),
-        )
+        let mut builder = self
+            .client
+            .post(self.url.clone())
+            .body(query.query.clone())
+            .query(&query.params)
+            .header(reqwest::header::TRANSFER_ENCODING, "chunked");
+        println!("{:?}", query.compression);
+        builder = builder.header(reqwest::header::ACCEPT_ENCODING, query.compression.name());
+        PreparedRequest(builder)
     }
     pub async fn send_query(&self, query: &ClickhouseQuery) -> Result<reqwest::Response, Error> {
         self.prepare_request(query).send().await

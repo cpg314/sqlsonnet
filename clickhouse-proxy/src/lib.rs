@@ -74,6 +74,7 @@ fn decode_query(
 async fn handle_query(
     axum::extract::Query(params): axum::extract::Query<BTreeMap<String, String>>,
     axum::extract::State(state): axum::extract::State<State>,
+    headers: axum::http::HeaderMap,
     request: String,
 ) -> Result<axum::response::Response, Error> {
     metrics::counter!("requests").increment(1);
@@ -93,7 +94,11 @@ async fn handle_query(
         tokio::task::spawn_blocking(move || decode_query(&request, state, true, None)).await??
     };
     state
-        .send_query(ClickhouseQuery { query: sql, params })
+        .send_query(ClickhouseQuery {
+            query: sql,
+            params,
+            compression: clickhouse_client::Compression::from_headers(&headers),
+        })
         .await
 }
 
@@ -129,7 +134,8 @@ struct State {
 impl State {
     fn new(args: &Flags) -> Result<Self, Error> {
         Ok(Self {
-            client: clickhouse_client::HttpClient::new(args.url.clone()),
+            // We set the compression to `false` to not decompress the body
+            client: clickhouse_client::HttpClient::new(args.url.clone(), false),
             resolver: sqlsonnet::FsResolver::new(
                 args.library.clone().map(|p| vec![p]).unwrap_or_default(),
             )
@@ -185,6 +191,7 @@ impl State {
             .send_query(&ClickhouseQuery {
                 query: "SELECT 1+1".into(),
                 params: Default::default(),
+                compression: clickhouse_client::Compression::None,
             })
             .await?
             .text()

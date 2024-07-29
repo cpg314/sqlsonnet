@@ -260,6 +260,13 @@ Options:
   -V, --version              Print version
 ```
 
+Features:
+
+- Caching
+- Library shared across clients
+- Prelude
+- End-to-end compression: when the `Accept-Encoding` header is set by the client, the server directly forwards the encoed data.
+
 ## Implementation details
 
 ### Jsonnet to SQL

@@ -172,7 +172,7 @@ async fn main_impl() -> Result<(), Error> {
     let client = args
         .proxy_url
         .clone()
-        .map(clickhouse_client::HttpClient::new);
+        .map(|url| clickhouse_client::HttpClient::new(url, true /* auto-decompress */));
 
     let filename = args.input.filename();
     let input = args.input.contents()?;
@@ -222,6 +222,7 @@ async fn main_impl() -> Result<(), Error> {
                             "default_format".into(),
                             "PrettyMonoBlock".into(),
                         )]),
+                        compression: clickhouse_client::Compression::Zstd,
                     })
                     .await?
                     .text()
