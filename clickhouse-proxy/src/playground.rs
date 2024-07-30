@@ -229,7 +229,13 @@ mod websocket {
             });
         };
         let message = message.replace_variables();
-        let sql = decode_query(&message.jsonnet, state.clone(), false, Some(ROWS_LIMIT))?;
+        let sql = decode_query(
+            &message.jsonnet,
+            state.clone(),
+            false,
+            Some(ROWS_LIMIT),
+            concat!("sqlsonnet-playground ", env!("CARGO_PKG_VERSION")).into(),
+        )?;
         let data = if message.clickhouse {
             let resp = state
                 .send_query(ClickhouseQuery {

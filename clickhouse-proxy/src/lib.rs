@@ -53,10 +53,15 @@ fn decode_query(
     state: State,
     compact: bool,
     limit: Option<usize>,
+    agent: String,
 ) -> Result<String, Error> {
-    let resolver = state.resolver;
-
-    let queries = Queries::from_jsonnet(request, resolver)?;
+    let queries = Queries::from_jsonnet(
+        request,
+        sqlsonnet::JsonnetOptions {
+            resolver: state.resolver,
+            agent: &agent,
+        },
+    )?;
     let mut query = if queries.len() == 1 {
         queries.into_iter().next().unwrap()
     } else {
@@ -91,7 +96,13 @@ async fn handle_query(
     } else {
         let state = state.clone();
         let request = [state.prelude()?, request].join("\n");
-        tokio::task::spawn_blocking(move || decode_query(&request, state, true, None)).await??
+        let agent = headers
+            .get(reqwest::header::USER_AGENT)
+            .and_then(|h| h.to_str().ok())
+            .unwrap_or_default()
+            .to_string();
+        tokio::task::spawn_blocking(move || decode_query(&request, state, true, None, agent))
+            .await??
     };
     state
         .send_query(ClickhouseQuery {

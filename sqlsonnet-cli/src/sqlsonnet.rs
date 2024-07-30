@@ -197,7 +197,13 @@ async fn main_impl() -> Result<(), Error> {
         }
 
         // TODO: Support passing a single query.
-        let queries = Queries::from_jsonnet(&contents, resolver)?;
+        let queries = Queries::from_jsonnet(
+            &contents,
+            sqlsonnet::JsonnetOptions {
+                resolver,
+                agent: concat!(env!("CARGO_BIN_NAME"), " ", env!("CARGO_PKG_VERSION")),
+            },
+        )?;
 
         let has = |l| display_format.iter().any(|l2| l2 == &l);
         // Display queries
