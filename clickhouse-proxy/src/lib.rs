@@ -97,7 +97,10 @@ async fn handle_query(
         .send_query(ClickhouseQuery {
             query: sql,
             params,
-            compression: clickhouse_client::Compression::from_headers(&headers),
+            compression: clickhouse_client::Compression::from_headers(
+                &headers,
+                reqwest::header::ACCEPT_ENCODING,
+            ),
         })
         .await
 }

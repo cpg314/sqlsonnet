@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use tracing::*;
 
 #[derive(Clone)]
 pub struct HttpClient {
@@ -20,30 +21,38 @@ pub enum Error {
 pub enum Compression {
     None,
     Zstd,
-    Gzip,
 }
 impl Compression {
     fn name(&self) -> &'static str {
         match self {
             Compression::None => "",
             Compression::Zstd => "zstd",
-            Compression::Gzip => "gzip",
         }
     }
-    pub fn from_headers(hm: &reqwest::header::HeaderMap) -> Self {
-        hm.get(reqwest::header::ACCEPT_ENCODING)
+    pub fn from_headers(
+        hm: &reqwest::header::HeaderMap,
+        field: reqwest::header::HeaderName,
+    ) -> Self {
+        hm.get(field)
             .and_then(|h| h.to_str().ok())
             .and_then(|h| {
                 // TODO: Do this in a compliant manner
                 if h.contains("zstd") {
                     Some(Self::Zstd)
-                } else if h.contains("gzip") {
-                    Some(Self::Gzip)
                 } else {
                     None
                 }
             })
             .unwrap_or(Self::None)
+    }
+    pub fn decode(&self, data: bytes::Bytes) -> Result<bytes::Bytes, std::io::Error> {
+        match self {
+            Compression::None => Ok(data),
+            Compression::Zstd => {
+                let cur = std::io::Cursor::new(data);
+                Ok(zstd::decode_all(cur)?.into())
+            }
+        }
     }
 }
 
@@ -59,7 +68,17 @@ impl PreparedRequest {
     pub async fn send(self) -> Result<reqwest::Response, Error> {
         let resp = self.0.send().await?;
         if !resp.status().is_success() {
-            return Err(Error::Clickhouse(resp.text().await.unwrap_or_default()));
+            // We decode the response manually if needed, because `decompression` was not
+            // necessarily set (e.g. if we're proxying the encoded data)
+            let encoding =
+                Compression::from_headers(resp.headers(), reqwest::header::CONTENT_ENCODING);
+            let data = encoding
+                .decode(resp.bytes().await?)
+                .inspect_err(|e| warn!("Failed to decode error: {}", e))
+                .unwrap_or_default();
+            return Err(Error::Clickhouse(
+                String::from_utf8_lossy(&data).to_string(),
+            ));
         }
         Ok(resp)
     }

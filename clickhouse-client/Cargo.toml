@@ -5,6 +5,9 @@ edition = "2021"
 
 
 [dependencies]
+bytes = "1.6.1"
 reqwest.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+zstd = "0.13.2"
+tracing.workspace = true
