@@ -38,40 +38,30 @@ async fn main() -> anyhow::Result<()> {
     // Wait until the server is up
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-    // Setup a client
-    struct Client {
-        url: reqwest::Url,
-        client: reqwest::Client,
-    }
-    impl Client {
-        async fn send(&self, query: &str) -> reqwest::Result<(String, reqwest::header::HeaderMap)> {
-            let resp = self
-                .client
-                .post(self.url.clone())
-                .body(query.to_owned())
-                .send()
-                .await?
-                .error_for_status()?;
-            let headers = resp.headers().clone();
-            Ok((resp.text().await?, headers))
-        }
-    }
+    // Setup client
     let mut url = reqwest::Url::parse("http://localhost")?;
     url.set_port(Some(port)).unwrap();
-    let client = Client {
-        url,
-        client: reqwest::Client::new(),
-    };
+    let client = clickhouse_client::HttpClient::new(url, true);
 
     // Sending SQL
-    assert_eq!(client.send("SELECT 1+1").await?.0, "2");
+    assert_eq!(
+        client
+            .send_query(&"SELECT 1+1".into())
+            .await?
+            .text()
+            .await?,
+        "2"
+    );
 
+    // Cache
     let query = sqlsonnet::Query::from_sql("SELECT count(*) AS c FROM table")?;
     for i in 0..2 {
         // Sending Jsonnet
-        let headers = client.send(&query.as_jsonnet().to_string()).await?.1;
+        let resp = client
+            .send_query(&query.as_jsonnet().to_string().as_str().into())
+            .await?;
         assert_eq!(
-            headers.get("X-Cache").unwrap().to_str()?,
+            resp.headers().get("X-Cache").unwrap().to_str()?,
             if i == 0 { "MISS" } else { "HIT" }
         );
         assert_eq!(last_query.lock().await.as_str(), query.to_sql(true));
@@ -79,7 +69,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Using the standard library
     client
-        .send(r#"{ select: { from: "table", fields: [u.count()] } }"#)
+        .send_query(&r#"{ select: { from: "table", fields: [u.count()] } }"#.into())
         .await?;
     assert_eq!(last_query.lock().await.as_str(), query.to_sql(true));
 

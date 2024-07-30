@@ -62,6 +62,15 @@ pub struct ClickhouseQuery {
     pub params: BTreeMap<String, String>,
     pub compression: Compression,
 }
+impl From<&str> for ClickhouseQuery {
+    fn from(source: &str) -> Self {
+        Self {
+            query: source.into(),
+            params: Default::default(),
+            compression: Compression::None,
+        }
+    }
+}
 
 pub struct PreparedRequest(reqwest::RequestBuilder);
 impl PreparedRequest {
