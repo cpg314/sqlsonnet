@@ -76,8 +76,8 @@ Options:
           With --from-sql: Convert back to SQL and print the differences with the original, if any
       --display-format <DISPLAY_FORMAT>
           [possible values: sql, jsonnet, json]
-      --proxy-url <PROXY_URL>
-          sqlsonnet proxy URL [env: SQLSONNET_PROXY=]
+      --clickhouse-url <CLICKHOUSE_URL>
+          Clickhouse HTTP URL, to execute queries [env: SQLSONNET_CLICKHOUSE=]
   -J, --jpath <JPATH>
           Library path [env: JSONNET_PATH=]
   -e, --execute

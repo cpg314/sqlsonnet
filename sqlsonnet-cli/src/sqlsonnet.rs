@@ -48,11 +48,11 @@ struct Flags {
     diff: bool,
     #[clap(long, value_delimiter = ',')]
     display_format: Option<Vec<Language>>,
-    /// sqlsonnet proxy URL
-    #[clap(long, env = "SQLSONNET_PROXY")]
-    proxy_url: Option<reqwest::Url>,
+    /// Clickhouse HTTP URL, to execute queries
+    #[clap(long, env = "SQLSONNET_CLICKHOUSE")]
+    clickhouse_url: Option<reqwest::Url>,
     /// Send query to Clickhouse proxy (--proxy-url) for execution
-    #[clap(long, short, conflicts_with = "from_sql", requires = "proxy_url")]
+    #[clap(long, short, conflicts_with = "from_sql", requires = "clickhouse_url")]
     execute: bool,
     /// Library path
     #[clap(long, short = 'J', env = "JSONNET_PATH", value_delimiter = ',')]
@@ -132,7 +132,7 @@ async fn main_impl() -> Result<(), Error> {
     sqlsonnet::setup_logging();
     let mut args = Flags::parse();
     if !args.execute {
-        args.proxy_url = None;
+        args.clickhouse_url = None;
     }
 
     let assets = bat::assets::HighlightingAssets::from_binary();
@@ -164,7 +164,7 @@ async fn main_impl() -> Result<(), Error> {
     });
 
     let client = args
-        .proxy_url
+        .clickhouse_url
         .clone()
         .map(|url| clickhouse_client::HttpClient::new(url, true /* auto-decompress */));
 
