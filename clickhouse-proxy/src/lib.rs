@@ -36,8 +36,8 @@ pub struct Flags {
     #[clap(long)]
     pub cache: Option<PathBuf>,
     /// Folder with Jsonnet library files
-    #[clap(long)]
-    pub library: Option<PathBuf>,
+    #[clap(long, env = "JSONNET_PATH", value_delimiter = ',')]
+    pub library: Option<Vec<PathBuf>>,
     /// Folder with shared snippets
     #[clap(long)]
     pub shares: Option<PathBuf>,
@@ -150,10 +150,7 @@ impl State {
         Ok(Self {
             // We set the compression to `false` to not decompress the body
             client: clickhouse_client::HttpClient::new(args.url.clone(), false),
-            resolver: sqlsonnet::FsResolver::new(
-                args.library.clone().map(|p| vec![p]).unwrap_or_default(),
-            )
-            .into(),
+            resolver: sqlsonnet::FsResolver::new(args.library.clone().unwrap_or_default()).into(),
             cache: if let Some(path) = &args.cache {
                 Some(Arc::new(cache::Cache::init(path)?))
             } else {
@@ -231,9 +228,6 @@ pub async fn main_impl(args: Flags) -> anyhow::Result<()> {
         .install_recorder()
         .context("Failed to setup Prometheus metrics")?;
 
-    if let Some(library) = &args.library {
-        std::fs::create_dir_all(library).context("Failed to create library")?;
-    }
     if let Some(prelude) = &args.prelude {
         anyhow::ensure!(prelude.is_file(), "Prelude {:?} not found", prelude);
     }

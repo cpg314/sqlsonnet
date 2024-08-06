@@ -20,7 +20,7 @@ async fn integration() -> anyhow::Result<()> {
         if let Err(e) = clickhouse_proxy::main_impl(clickhouse_proxy::Flags {
             url: reqwest::Url::parse("http://default@localhost:8123").unwrap(),
             cache: Some(cache.path().into()),
-            library: Some(library.path().into()),
+            library: Some(vec![library.path().into()]),
             prelude: Some(prelude.path().into()),
             shares: None,
             port,
