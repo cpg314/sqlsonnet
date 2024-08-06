@@ -6,6 +6,7 @@ edition = "2021"
 [[bin]]
 name = "sqlsonnet"
 path = "src/sqlsonnet.rs"
+doc = false
 
 [dependencies]
 sqlsonnet = { path = "../sqlsonnet", features = ["fancy"] }

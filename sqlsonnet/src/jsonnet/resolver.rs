@@ -4,7 +4,7 @@ use std::sync::Arc;
 use super::*;
 
 /// A simpler version of jrsonnet_evaluator::ImportResolver, so that we can
-/// easily implement it on Arc<T>.
+/// easily implement it on `Arc<T>`.
 pub trait ImportResolver: Trace + Sized {
     fn resolve(&self, from: &SourcePath, path: &str) -> Option<PathBuf>;
     fn load(&self, resolved: &SourcePath) -> Result<Vec<u8>, std::io::Error>;
