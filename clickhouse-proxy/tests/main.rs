@@ -7,7 +7,7 @@ async fn integration() -> anyhow::Result<()> {
     let prelude = tempfile::NamedTempFile::new()?;
     std::fs::write(
         prelude.path(),
-        "local u2 = import 'sqlsonnet.libsonnet'; {}",
+        sqlsonnet_macros::sqlsonnet!(local u2 = import "sqlsonnet.libsonnet"; {}),
     )?;
     let library = tempfile::tempdir()?;
     std::fs::write(library.path().join("test.libsonnet"), "{ answer: 42 }")?;
@@ -66,10 +66,10 @@ async fn integration() -> anyhow::Result<()> {
     // Using the embedded and custom libraries
     let out = client
         .send_query(
-            &r#"
-            local l = import 'test.libsonnet';
-            { select: { from: "system.one", fields: [l.answer, u2.count()] } }
-            "#
+            &sqlsonnet_macros::sqlsonnet!(
+             local l = import "test.libsonnet";
+             { select: { from: "system.one", fields: [l.answer, u2.count()] } }
+            )
             .into(),
         )
         .await?

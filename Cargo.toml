@@ -18,7 +18,7 @@ reqwest = { version = "0.12.4", features = ["rustls-tls", "json", "gzip", "zstd"
 http = "1.0.0"
 
 [workspace]
-members = ["sqlsonnet", "clickhouse-proxy", "sqlsonnet-cli", "clickhouse-client", "bindings/wasm"]
+members = ["sqlsonnet", "clickhouse-proxy", "sqlsonnet-cli", "clickhouse-client", "bindings/wasm", "macros"]
 resolver = "2"
 
 [profile.release]

@@ -24,3 +24,4 @@ fancy = ["miette/fancy", "miette/syntect-highlighter"]
 
 [dev-dependencies]
 anyhow.workspace = true
+sqlsonnet-macros = { path = "../macros" }

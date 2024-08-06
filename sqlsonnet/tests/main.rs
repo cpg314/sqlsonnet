@@ -74,7 +74,7 @@ fn examples() -> anyhow::Result<()> {
 // Deserialize Queries from a Query.
 #[test]
 fn queries_single() -> anyhow::Result<()> {
-    let s = "{ select: { fields: [1] } }";
+    let s = sqlsonnet_macros::sqlsonnet!({ select: { fields: [1] } });
     let queries = run_queries(s)?;
     let query = run_query(s)?;
     assert_eq!(queries, vec![query].into());
