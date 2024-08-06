@@ -21,7 +21,13 @@ eval $COMMAND --help
 [tasks.cross]
 dependencies = ["playground-proxy"]
 
+[tasks.checkalot]
+dependencies = ["playground-proxy"]
+command = "checkalot"
+
+################
 # WASM bindings
+################
 [tasks.wasm]
 command = "wasm-pack"
 args = ["build", "--target", "web", "bindings/wasm/"]
@@ -31,19 +37,27 @@ condition = { files_modified = { input = ["./sqlsonnet/**/*", "./bindings/wasm/s
 command = "wasm-pack"
 args = ["build", "--target", "web", "--dev", "bindings/wasm/"]
 
+[tasks.playground-install]
+condition = { files_modified = { input = ["package.json", "package-lock.json"], output = ["node_modules/**/*"] } }
+cwd = "playground"
+command = "npm"
+args = ["install"]
+
+################
 # Playground for the clickhouse proxy
+################
 [tasks.playground-proxy]
-dependencies = ["wasm"]
+dependencies = ["wasm", "playground-install"]
+condition = { files_modified = { input = ["src/*", "*.json", "*.ts", "../bindings/wasm/pkg/*"], output = ["dist-proxy/*"] } }
 env = { "VITE_PROXY" = "1" }
+cwd = "playground"
 script = '''
 #!/usr/bin/env bash
 set -euo pipefail
 
-pushd playground
 npm run build --emptyOutDir
 rm dist-proxy/assets/*.wasm
 tree dist-proxy
-popd
 '''
 [tasks.playground-proxy-run]
 dependencies = ["wasm-dev", "playground-install"]
@@ -52,7 +66,9 @@ cwd = "playground"
 command = "npm"
 args = ["run", "dev"]
 
+################
 # Standalone playground
+################
 [tasks.playground-wasm]
 env = { "VITE_PROXY" = "0" }
 script = '''
@@ -85,7 +101,3 @@ git --no-pager log pages -n1
 extend = "playground-proxy-run"
 env = { "VITE_PROXY" = "0" }
 
-[tasks.playground-install]
-cwd = "playground"
-command = "npm"
-args = ["install"]
