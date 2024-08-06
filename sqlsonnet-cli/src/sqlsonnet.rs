@@ -54,6 +54,9 @@ struct Flags {
     /// Send query to Clickhouse proxy (--proxy-url) for execution
     #[clap(long, short, conflicts_with = "from_sql", requires = "clickhouse_url")]
     execute: bool,
+    /// Output format for execution
+    #[clap(long, default_value = "PrettyMonoBlock")]
+    execute_format: String,
     /// Library path
     #[clap(long, short = 'J', env = "JSONNET_PATH", value_delimiter = ',')]
     jpath: Option<Vec<PathBuf>>,
@@ -222,7 +225,7 @@ async fn main_impl() -> Result<(), Error> {
                         query: query.to_sql(false),
                         params: BTreeMap::from([(
                             "default_format".into(),
-                            "PrettyMonoBlock".into(),
+                            args.execute_format.clone(),
                         )]),
                         compression: clickhouse_client::Compression::Zstd,
                     })
