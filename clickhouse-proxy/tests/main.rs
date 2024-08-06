@@ -9,6 +9,8 @@ async fn integration() -> anyhow::Result<()> {
         prelude.path(),
         "local u2 = import 'sqlsonnet.libsonnet'; {}",
     )?;
+    let library = tempfile::tempdir()?;
+    std::fs::write(library.path().join("test.libsonnet"), "{ answer: 42 }")?;
 
     // Start proxy
     let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await?;
@@ -18,7 +20,7 @@ async fn integration() -> anyhow::Result<()> {
         if let Err(e) = clickhouse_proxy::main_impl(clickhouse_proxy::Flags {
             url: reqwest::Url::parse("http://default@localhost:8123").unwrap(),
             cache: Some(cache.path().into()),
-            library: None,
+            library: Some(library.path().into()),
             prelude: Some(prelude.path().into()),
             shares: None,
             port,
@@ -61,13 +63,19 @@ async fn integration() -> anyhow::Result<()> {
         assert_eq!(resp.text().await?, "1\n");
     }
 
-    // Using the standard library
+    // Using the embedded and custom libraries
     let out = client
-        .send_query(&r#"{ select: { from: "system.one", fields: [u2.count()] } }"#.into())
+        .send_query(
+            &r#"
+            local l = import 'test.libsonnet';
+            { select: { from: "system.one", fields: [l.answer, u2.count()] } }
+            "#
+            .into(),
+        )
         .await?
         .text()
         .await?;
-    assert_eq!(out, "1\n");
+    assert_eq!(out, "42\t1\n");
 
     Ok(())
 }

@@ -41,7 +41,7 @@ pub struct Flags {
     /// Folder with shared snippets
     #[clap(long)]
     pub shares: Option<PathBuf>,
-    /// Prepended to all requests
+    /// Prepended to all requests. The ending {} that makes it valid jsonnete will be removed.
     #[clap(long)]
     pub prelude: Option<PathBuf>,
     #[clap(long)]
