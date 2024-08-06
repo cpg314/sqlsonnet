@@ -7,6 +7,7 @@ section: "default"
 priority: "extra"
 provides:
   - sqlsonnet
+  - sqlsonnet_clickhouse_proxy
 description: ""
 vendor: "cpg314"
 maintainer: "cpg314 <44120267+cpg314@users.noreply.github.com>"
