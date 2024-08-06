@@ -1,33 +1,13 @@
-use std::sync::Arc;
-
-use axum::{extract::State, response::IntoResponse};
-use futures::lock::Mutex;
-
-async fn handler(State(last): State<LastQuery>, query: String) -> axum::response::Response {
-    *last.lock().await = query;
-    "2".into_response()
-}
-type LastQuery = Arc<Mutex<String>>;
+/// Integration test which requires a Clickhouse server running (use `cargo make docker-compose`)
 #[tokio::test]
-async fn main() -> anyhow::Result<()> {
-    let last_query = LastQuery::default();
-    // Spin up a fake Clickhouse server
-    let fake_ch = axum::Router::new()
-        .route("/", axum::routing::post(handler))
-        .with_state(last_query.clone());
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:1235").await?;
-    let fake_chaddr = listener.local_addr()?;
-    tokio::spawn(async move {
-        axum::serve(listener, fake_ch).await.unwrap();
-    });
-
+async fn integration() -> anyhow::Result<()> {
     // Start proxy
     let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await?;
     let port = listener.local_addr()?.port();
     drop(listener);
     let cache = tempfile::tempdir()?;
     let _server = tokio::spawn(clickhouse_proxy::main_impl(clickhouse_proxy::Flags {
-        url: reqwest::Url::parse(&format!("http://default@{}", fake_chaddr))?,
+        url: reqwest::Url::parse("http://default@localhost:8123")?,
         cache: Some(cache.path().into()),
         library: None,
         prelude: None,
@@ -50,11 +30,11 @@ async fn main() -> anyhow::Result<()> {
             .await?
             .text()
             .await?,
-        "2"
+        "2\n"
     );
 
     // Cache
-    let query = sqlsonnet::Query::from_sql("SELECT count(*) AS c FROM table")?;
+    let query = sqlsonnet::Query::from_sql("SELECT count(*) AS c FROM system.one")?;
     for i in 0..2 {
         // Sending Jsonnet
         let resp = client
@@ -64,14 +44,16 @@ async fn main() -> anyhow::Result<()> {
             resp.headers().get("X-Cache").unwrap().to_str()?,
             if i == 0 { "MISS" } else { "HIT" }
         );
-        assert_eq!(last_query.lock().await.as_str(), query.to_sql(true));
+        assert_eq!(resp.text().await?, "1\n");
     }
 
     // Using the standard library
-    client
-        .send_query(&r#"{ select: { from: "table", fields: [u.count()] } }"#.into())
+    let out = client
+        .send_query(&r#"{ select: { from: "system.one", fields: [u.count()] } }"#.into())
+        .await?
+        .text()
         .await?;
-    assert_eq!(last_query.lock().await.as_str(), query.to_sql(true));
+    assert_eq!(out, "1\n");
 
     Ok(())
 }

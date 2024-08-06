@@ -22,8 +22,12 @@ eval $COMMAND --help
 dependencies = ["playground-proxy"]
 
 [tasks.checkalot]
-dependencies = ["playground-proxy"]
+dependencies = ["playground-proxy", "docker-compose"]
 command = "checkalot"
+
+[tasks.docker-compose]
+command = "docker"
+args = ["compose", "up", "-d"]
 
 ################
 # WASM bindings
