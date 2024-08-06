@@ -164,16 +164,21 @@ impl State {
     }
 
     fn prelude(&self) -> Result<String, Error> {
-        Ok(format!(
-            "{}\n{}",
-            sqlsonnet::import_utils(),
-            self.args
-                .prelude
-                .as_ref()
-                .map(|p| std::fs::read_to_string(p).map_err(|e| Error::Prelude(p.into(), e)))
-                .transpose()?
-                .unwrap_or_default()
-        ))
+        let prelude = self
+            .args
+            .prelude
+            .as_ref()
+            .map(|p| std::fs::read_to_string(p).map_err(|e| Error::Prelude(p.into(), e)))
+            .transpose()?
+            .unwrap_or_default();
+
+        // Get rid of the ending {} that make the prelude valid jsonnet
+        lazy_static::lazy_static! {
+            pub static ref PRELUDE_RE: regex::Regex = regex::Regex::new(r#"\{\s*\}\s*$"#).unwrap();
+        }
+        let prelude = PRELUDE_RE.replace_all(&prelude, "");
+
+        Ok(format!("{}\n{}", sqlsonnet::import_utils(), prelude))
     }
     fn prepare_request(&self, query: ClickhouseQuery) -> PreparedRequest {
         // Hash query

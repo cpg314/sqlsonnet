@@ -1,19 +1,33 @@
+use tracing::*;
+
 /// Integration test which requires a Clickhouse server running (use `cargo make docker-compose`)
 #[tokio::test]
 async fn integration() -> anyhow::Result<()> {
+    let cache = tempfile::tempdir()?;
+    let prelude = tempfile::NamedTempFile::new()?;
+    std::fs::write(
+        prelude.path(),
+        "local u2 = import 'sqlsonnet.libsonnet'; {}",
+    )?;
+
     // Start proxy
     let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await?;
     let port = listener.local_addr()?.port();
     drop(listener);
-    let cache = tempfile::tempdir()?;
-    let _server = tokio::spawn(clickhouse_proxy::main_impl(clickhouse_proxy::Flags {
-        url: reqwest::Url::parse("http://default@localhost:8123")?,
-        cache: Some(cache.path().into()),
-        library: None,
-        prelude: None,
-        shares: None,
-        port,
-    }));
+    let _server = tokio::spawn(async move {
+        if let Err(e) = clickhouse_proxy::main_impl(clickhouse_proxy::Flags {
+            url: reqwest::Url::parse("http://default@localhost:8123").unwrap(),
+            cache: Some(cache.path().into()),
+            library: None,
+            prelude: Some(prelude.path().into()),
+            shares: None,
+            port,
+        })
+        .await
+        {
+            error!("{}", e);
+        }
+    });
 
     // Wait until the server is up
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
@@ -49,7 +63,7 @@ async fn integration() -> anyhow::Result<()> {
 
     // Using the standard library
     let out = client
-        .send_query(&r#"{ select: { from: "system.one", fields: [u.count()] } }"#.into())
+        .send_query(&r#"{ select: { from: "system.one", fields: [u2.count()] } }"#.into())
         .await?
         .text()
         .await?;
