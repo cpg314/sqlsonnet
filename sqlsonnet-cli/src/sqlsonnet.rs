@@ -105,6 +105,11 @@ fn highlight<T: std::fmt::Display>(
     language: Language,
     args: &Flags,
 ) -> Result<(), Error> {
+    if args.execute {
+        // TODO: Get `bat` to output on stderr. This currently cannot be configured with the
+        // PrettyPrinter
+        return Ok(());
+    }
     let is_tty = std::io::stdout().is_terminal();
     if is_tty {
         let mut printer = bat::PrettyPrinter::new();
@@ -119,9 +124,9 @@ fn highlight<T: std::fmt::Display>(
 
         printer.print()?;
     } else {
-        println!("{}", snippet);
+        eprintln!("{}", snippet);
     }
-    println!();
+    eprintln!();
     Ok(())
 }
 
@@ -186,7 +191,7 @@ async fn main_impl() -> Result<(), Error> {
             highlight(jsonnet, Language::Jsonnet, &args)?;
         }
         if args.diff && input != sql {
-            println!("{}", pretty_assertions::StrComparison::new(&input, &sql));
+            eprintln!("{}", pretty_assertions::StrComparison::new(&input, &sql));
         }
     } else {
         let contents = sqlsonnet::jsonnet::import_utils() + &input;
