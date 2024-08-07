@@ -17,7 +17,7 @@ use metrics_exporter_prometheus::PrometheusBuilder;
 use tracing::*;
 
 use clickhouse_client::ClickhouseQuery;
-use sqlsonnet::{FsResolver, Queries, Query};
+use sqlsonnet::{jsonnet::FsResolver, Queries, Query};
 
 lazy_static::lazy_static! {
     pub static ref VARIABLE_RE: regex::Regex = regex::Regex::new(r#"\$\{(.*?)\}"#).unwrap();
@@ -57,7 +57,7 @@ fn decode_query(
 ) -> Result<String, Error> {
     let queries = Queries::from_jsonnet(
         request,
-        sqlsonnet::JsonnetOptions {
+        sqlsonnet::jsonnet::Options {
             resolver: state.resolver,
             agent: &agent,
         },
@@ -150,7 +150,8 @@ impl State {
         Ok(Self {
             // We set the compression to `false` to not decompress the body
             client: clickhouse_client::HttpClient::new(args.url.clone(), false),
-            resolver: sqlsonnet::FsResolver::new(args.library.clone().unwrap_or_default()).into(),
+            resolver: sqlsonnet::jsonnet::FsResolver::new(args.library.clone().unwrap_or_default())
+                .into(),
             cache: if let Some(path) = &args.cache {
                 Some(Arc::new(cache::Cache::init(path)?))
             } else {
@@ -175,7 +176,11 @@ impl State {
         }
         let prelude = PRELUDE_RE.replace_all(&prelude, "");
 
-        Ok(format!("{}\n{}", sqlsonnet::import_utils(), prelude))
+        Ok(format!(
+            "{}\n{}",
+            sqlsonnet::jsonnet::import_utils(),
+            prelude
+        ))
     }
     fn prepare_request(&self, query: ClickhouseQuery) -> PreparedRequest {
         // Hash query

@@ -1,6 +1,6 @@
 use pretty_assertions::assert_eq;
 
-use sqlsonnet::{FsResolver, Queries, Query};
+use sqlsonnet::{jsonnet::Options, Queries, Query};
 
 #[test]
 fn sql_roundtrip() -> anyhow::Result<()> {
@@ -20,7 +20,7 @@ fn sql_roundtrip() -> anyhow::Result<()> {
     println!("{}", jsonnet);
 
     // Jsonnet to queries
-    let queries2 = Queries::from_jsonnet(&jsonnet, FsResolver::default())?;
+    let queries2 = Queries::from_jsonnet(&jsonnet, Options::default())?;
     assert_eq!(queries, queries2);
 
     Ok(())
@@ -31,8 +31,8 @@ macro_rules! run_impl {
     ($i: ident, $t:ty) => {
         fn $i(q: &str) -> anyhow::Result<$t> {
             Ok(<$t>::from_jsonnet(
-                &format!("{} {}", sqlsonnet::import_utils(), q),
-                FsResolver::default(),
+                &format!("{} {}", sqlsonnet::jsonnet::import_utils(), q),
+                Options::default(),
             )?)
         }
     };

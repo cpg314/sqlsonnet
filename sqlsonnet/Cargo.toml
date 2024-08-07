@@ -18,10 +18,10 @@ serde_json.workspace = true
 serde_with = "3.8.1"
 thiserror.workspace = true
 tracing-subscriber.workspace = true
+sqlsonnet-macros = { path = "../macros" }
 
 [features]
 fancy = ["miette/fancy", "miette/syntect-highlighter"]
 
 [dev-dependencies]
 anyhow.workspace = true
-sqlsonnet-macros = { path = "../macros" }

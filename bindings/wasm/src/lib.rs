@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 
-use sqlsonnet::{FsResolver, Query};
+use sqlsonnet::{jsonnet::FsResolver, Query};
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
@@ -25,7 +25,7 @@ impl From<Error> for JsValue {
 #[wasm_bindgen]
 pub fn to_sql(input: &str) -> Result<String, Error> {
     let query = Query::from_jsonnet(
-        &format!("{}\n{}", sqlsonnet::import_utils(), input),
+        &format!("{}\n{}", sqlsonnet::jsonnet::import_utils(), input),
         FsResolver::default(),
     )?;
     Ok(query.to_sql(false))

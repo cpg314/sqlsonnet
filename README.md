@@ -300,3 +300,11 @@ $ cargo make wasm
 $ # Build playground
 $ cargo make playground-wasm
 ```
+
+## TODO
+
+- Proxy:
+  - Cache control: expire cache entries, etc.
+  - Support Postgres
+- Prevent representation of invalid SQL.
+- Support more query types than `SELECT`.

@@ -1,9 +1,8 @@
-use std::path::Path;
 use std::sync::Arc;
 
 use super::*;
 
-/// A simpler version of jrsonnet_evaluator::ImportResolver, so that we can
+/// A simpler version of [`jrsonnet_evaluator::ImportResolver`], so that we can
 /// easily implement it on `Arc<T>`.
 pub trait ImportResolver: Trace + Sized {
     fn resolve(&self, from: &SourcePath, path: &str) -> Option<PathBuf>;
@@ -25,6 +24,7 @@ impl<T: ImportResolver> ImportResolver for Arc<T> {
     }
 }
 
+/// Simple filesystem resolver
 #[derive(Trace)]
 pub struct FsResolver {
     search_paths: Vec<PathBuf>,
@@ -37,16 +37,6 @@ impl Default for FsResolver {
 impl FsResolver {
     pub fn current_dir() -> Self {
         Self::new(std::env::current_dir().map(|d| vec![d]).unwrap_or_default())
-    }
-    pub fn from_filename(filename: impl AsRef<Path>) -> Self {
-        Self::new(
-            filename
-                .as_ref()
-                .parent()
-                .map(|p| p.to_owned())
-                .into_iter()
-                .collect(),
-        )
     }
     pub fn add(&mut self, path: PathBuf) {
         self.search_paths.push(path);

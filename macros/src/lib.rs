@@ -3,6 +3,9 @@ use proc_macro::TokenStream;
 use quote::quote;
 
 /// Macro for inline sqlsonnet (actually simply jsonnet), reporting syntax errors as build errors.
+/// ```
+/// sqlsonnet!( { select: { fields: [1+1] } } );
+/// ```
 #[proc_macro]
 pub fn sqlsonnet(input: TokenStream) -> TokenStream {
     let input = input.to_string();

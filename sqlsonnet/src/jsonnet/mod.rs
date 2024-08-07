@@ -1,3 +1,4 @@
+//! Interpretation of Jsonnet code.
 mod formatter;
 mod resolver;
 pub use formatter::Jsonnet;
@@ -10,12 +11,16 @@ use jrsonnet_gcmodule::Trace;
 
 use crate::error::JsonnetError;
 
-const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
-const AGENT_VAR: &str = "sqlsonnet-user-agent";
+/// Filename for the embedded utilities library.
+pub const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
+/// Name of the `extVar` where the user agent is stored.
+pub const AGENT_VAR: &str = "sqlsonnet-user-agent";
 
+/// Import instruction for the embedded utilities
 pub fn import_utils() -> String {
     import("u", UTILS_FILENAME)
 }
+/// Jsonnet import statement `local {variable} = import '{filename}';`
 pub fn import(variable: &str, filename: &str) -> String {
     format!("local {} = import '{}';", variable, filename)
 }
@@ -30,9 +35,21 @@ fn evaluate_snippet(
         .map_err(|e| JsonnetError::from(src, e))
 }
 
+/// Options for jsonnet interpretation.
 pub struct Options<'a, R: ImportResolver> {
+    /// Import resolver
     pub resolver: R,
+    /// User agent, stored in [`AGENT_VAR`]
     pub agent: &'a str,
+}
+
+impl Default for Options<'static, FsResolver> {
+    fn default() -> Self {
+        Self {
+            resolver: FsResolver::default(),
+            agent: "",
+        }
+    }
 }
 impl<R: ImportResolver> From<R> for Options<'static, R> {
     fn from(resolver: R) -> Self {

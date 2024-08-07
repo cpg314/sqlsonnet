@@ -1,6 +1,7 @@
 use itertools::Itertools;
 use miette::{Diagnostic, SourceCode};
 
+/// Errors
 #[derive(thiserror::Error, Diagnostic, Debug)]
 pub enum Error {
     #[error(transparent)]
@@ -73,11 +74,13 @@ pub struct SQLParseError {
     pub span: miette::SourceOffset,
 }
 
+/// Converted errors with message, source code, and location.
 #[derive(serde::Serialize)]
 pub struct FormattedError {
-    message: String,
-    code: Option<String>,
-    location: Option<[usize; 2]>,
+    pub message: String,
+    pub code: Option<String>,
+    /// Line and column
+    pub location: Option<[usize; 2]>,
 }
 impl From<String> for FormattedError {
     fn from(source: String) -> Self {

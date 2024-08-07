@@ -1,10 +1,12 @@
+//! Representation of SQL queries.
+
 #![allow(unstable_name_collisions)]
 pub use expr::*;
 
 use itertools::Itertools;
 use serde::{de::Error, Deserialize, Serialize};
 
-/// A set of SQL queries
+/// A set of [`Query`].
 #[derive(Serialize, Debug, Default, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Queries(Vec<Query>);
@@ -88,6 +90,7 @@ impl<'a> IntoIterator for &'a Queries {
     }
 }
 
+/// SQL expressions
 pub mod expr {
     use super::*;
 
@@ -174,6 +177,7 @@ pub enum Query {
     Select(select::Query),
 }
 
+/// `FROM` statements
 pub mod from {
     use super::*;
     #[derive(Deserialize, Serialize, PartialEq, Eq, Debug)]
@@ -209,6 +213,7 @@ pub mod from {
     }
 }
 
+/// `JOIN` statements
 pub mod join {
     use super::*;
     #[derive(Deserialize, Serialize, PartialEq, Eq, Debug)]
@@ -237,6 +242,7 @@ pub mod join {
     }
 }
 
+/// `ORDER BY` statements
 pub mod order_by {
     use super::*;
 
@@ -265,6 +271,7 @@ pub mod order_by {
     }
 }
 
+/// `SELECT` queries
 pub mod select {
     use super::*;
     #[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]

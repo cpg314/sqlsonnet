@@ -29,6 +29,10 @@ checks:
     fix_command: cargo clippy --color always --release --workspace --no-deps --benches --tests --all-features --fix --allow-dirty --allow-staged -- -D warnings
 
   - type: command
+    name: docker-compose
+    command: cargo make docker-compose
+
+  - type: command
     name: tests
     command: cargo nextest run -r
 

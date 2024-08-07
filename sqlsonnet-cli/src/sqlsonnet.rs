@@ -189,10 +189,10 @@ async fn main_impl() -> Result<(), Error> {
             println!("{}", pretty_assertions::StrComparison::new(&input, &sql));
         }
     } else {
-        let contents = sqlsonnet::import_utils() + &input;
+        let contents = sqlsonnet::jsonnet::import_utils() + &input;
         info!("Converting Jsonnet file {} to SQL", filename);
 
-        let mut resolver = sqlsonnet::FsResolver::current_dir();
+        let mut resolver = sqlsonnet::jsonnet::FsResolver::current_dir();
         if let Some(jpath) = args.jpath.clone() {
             for path in jpath {
                 resolver.add(path);
@@ -202,7 +202,7 @@ async fn main_impl() -> Result<(), Error> {
         // TODO: Support passing a single query.
         let queries = Queries::from_jsonnet(
             &contents,
-            sqlsonnet::JsonnetOptions {
+            sqlsonnet::jsonnet::Options {
                 resolver,
                 agent: concat!(env!("CARGO_BIN_NAME"), " ", env!("CARGO_PKG_VERSION")),
             },
