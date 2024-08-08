@@ -46,17 +46,13 @@ impl FsResolver {
     }
 }
 impl ImportResolver for FsResolver {
-    fn resolve(&self, from: &SourcePath, path: &str) -> Option<PathBuf> {
+    fn resolve(&self, _from: &SourcePath, path: &str) -> Option<PathBuf> {
         // Search paths
-        let from = from.path().and_then(|p| p.parent());
         if let Some(p) = self
             .search_paths
             .iter()
             .map(|p| {
-                let mut p = p.clone();
-                if let Some(from) = from {
-                    p = p.join(from);
-                }
+                let p = p.clone();
                 p.join(path)
             })
             .find(|p| p.exists())
