@@ -6,7 +6,9 @@ pub use resolver::{FsResolver, ImportResolver};
 
 use std::path::PathBuf;
 
-use jrsonnet_evaluator::{parser::SourcePath, trace::PathResolver};
+pub use jrsonnet_evaluator::parser::SourcePath;
+use jrsonnet_evaluator::trace::PathResolver;
+pub use jrsonnet_gcmodule;
 use jrsonnet_gcmodule::Trace;
 
 use crate::error::JsonnetError;
