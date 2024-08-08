@@ -14,6 +14,7 @@
 
 mod error;
 pub use error::{Error, FormattedError};
+#[cfg(feature = "from-sql")]
 mod from_sql;
 pub mod jsonnet;
 pub mod queries;
@@ -31,6 +32,7 @@ macro_rules! impl_conversions {
                 serde_json::to_value(self).unwrap().into()
             }
             /// Convert from SQL.
+            #[cfg(feature = "from-sql")]
             pub fn from_sql(input: &str) -> Result<Self, Error> {
                 Ok(from_sql::query_from_sql(input, $rule)?)
             }

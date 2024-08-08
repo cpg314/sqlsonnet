@@ -9,7 +9,7 @@ path = "src/sqlsonnet.rs"
 doc = false
 
 [dependencies]
-sqlsonnet = { path = "../sqlsonnet", features = ["fancy"] }
+sqlsonnet = { path = "../sqlsonnet", features = ["fancy", "from-sql"] }
 clickhouse-client = { path = "../clickhouse-client" }
 
 bat = { version = "0.24.0", default-features = false }
