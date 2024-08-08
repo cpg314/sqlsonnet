@@ -1,7 +1,7 @@
 extend = "common.toml"
 
 [config]
-load_script = "wget -nc https://raw.githubusercontent.com/cpg314/cargo-make-template/v0.1.2/common.toml"
+load_script = "wget -nc https://raw.githubusercontent.com/cpg314/cargo-make-template/v0.1.3/common.toml"
 
 [env]
 VITE_SQLSONNET_VERSION = "${CARGO_MAKE_PROJECT_VERSION}"
