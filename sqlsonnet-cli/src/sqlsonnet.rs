@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 use std::io::IsTerminal;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use clap::Parser;
 use tracing::*;
@@ -26,6 +25,8 @@ enum Error {
     Miette(#[from] miette::InstallError),
     #[error("Failed to execute query")]
     Clickhouse(#[from] clickhouse_client::Error),
+    #[error(transparent)]
+    Watch(#[from] notify_debouncer_mini::notify::Error),
 }
 
 #[derive(Parser)]
@@ -39,7 +40,7 @@ struct Flags {
     #[clap(long, short)]
     compact: bool,
     /// Input file (path or - for stdin).
-    input: Input,
+    input: clap_stdin::FileOrStdin,
     /// Convert an SQL file into Jsonnet.
     #[clap(long, short)]
     from_sql: bool,
@@ -57,31 +58,12 @@ struct Flags {
     /// Output format for execution
     #[clap(long, default_value = "PrettyMonoBlock")]
     execute_format: String,
+    /// Watch for file changes
+    #[clap(long, short)]
+    watch: bool,
     /// Library path
     #[clap(long, short = 'J', env = "JSONNET_PATH", value_delimiter = ',')]
     jpath: Option<Vec<PathBuf>>,
-}
-
-#[derive(Clone)]
-struct Input(clap_stdin::FileOrStdin);
-impl FromStr for Input {
-    type Err = <clap_stdin::FileOrStdin as FromStr>::Err;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        clap_stdin::FileOrStdin::from_str(s).map(Self)
-    }
-}
-
-impl Input {
-    fn contents(&self) -> Result<String, clap_stdin::StdinError> {
-        self.0.clone().contents()
-    }
-    fn filename(&self) -> String {
-        match &self.0.source {
-            clap_stdin::Source::Stdin => "<stdin>".into(),
-            clap_stdin::Source::Arg(s) => s.clone(),
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ValueEnum)]
@@ -135,34 +117,11 @@ async fn main() -> miette::Result<()> {
     Ok(main_impl().await?)
 }
 
-async fn main_impl() -> Result<(), Error> {
+async fn process_one(
+    args: &Flags,
+    client: &Option<clickhouse_client::HttpClient>,
+) -> Result<(), Error> {
     let start = std::time::Instant::now();
-    sqlsonnet::setup_logging();
-    let mut args = Flags::parse();
-    if !args.execute {
-        args.clickhouse_url = None;
-    }
-
-    let assets = bat::assets::HighlightingAssets::from_binary();
-    let theme = assets.get_theme(
-        args.theme
-            .as_deref()
-            .unwrap_or_else(|| bat::assets::HighlightingAssets::default_theme()),
-    );
-    let highlighter = miette::highlighters::SyntectHighlighter::new(
-        assets.get_syntax_set().unwrap().clone(),
-        theme.clone(),
-        false,
-    );
-    miette::set_hook(Box::new(move |_| {
-        Box::new(
-            miette::MietteHandlerOpts::new()
-                .context_lines(10)
-                .with_syntax_highlighting(highlighter.clone())
-                .build(),
-        )
-    }))?;
-
     let display_format = args.display_format.clone().unwrap_or_else(|| {
         vec![if args.from_sql {
             Language::Jsonnet
@@ -171,24 +130,19 @@ async fn main_impl() -> Result<(), Error> {
         }]
     });
 
-    let client = args
-        .clickhouse_url
-        .clone()
-        .map(|url| clickhouse_client::HttpClient::new(url, true /* auto-decompress */));
-
     let filename = args.input.filename();
-    let input = args.input.contents()?;
+    let input = args.input.clone().contents()?;
     if args.from_sql {
         info!("Converting SQL file {}", filename);
         let queries = Queries::from_sql(&input)?;
         let has = |l| display_format.iter().any(|l2| l2 == &l);
         let sql = queries.to_sql(args.compact);
         if has(Language::Sql) {
-            highlight(&sql, Language::Sql, &args)?;
+            highlight(&sql, Language::Sql, args)?;
         }
         if has(Language::Jsonnet) {
             let jsonnet = queries.as_jsonnet();
-            highlight(jsonnet, Language::Jsonnet, &args)?;
+            highlight(jsonnet, Language::Jsonnet, args)?;
         }
         if args.diff && input != sql {
             eprintln!("{}", pretty_assertions::StrComparison::new(&input, &sql));
@@ -217,10 +171,10 @@ async fn main_impl() -> Result<(), Error> {
         // Display queries
         debug!("{:#?}", queries);
         if has(Language::Jsonnet) {
-            highlight(&contents, Language::Jsonnet, &args)?;
+            highlight(&contents, Language::Jsonnet, args)?;
         }
         if has(Language::Sql) {
-            highlight(queries.to_sql(args.compact), Language::Sql, &args)?;
+            highlight(queries.to_sql(args.compact), Language::Sql, args)?;
         }
         if let Some(client) = client {
             info!("Executing query on Clickhouse");
@@ -244,5 +198,60 @@ async fn main_impl() -> Result<(), Error> {
     }
 
     info!(elapsed=?start.elapsed(), "Done");
+    Ok(())
+}
+
+async fn main_impl() -> Result<(), Error> {
+    sqlsonnet::setup_logging();
+    let mut args = Flags::parse();
+    if !args.execute {
+        args.clickhouse_url = None;
+    }
+
+    let assets = bat::assets::HighlightingAssets::from_binary();
+    let theme = assets.get_theme(
+        args.theme
+            .as_deref()
+            .unwrap_or_else(|| bat::assets::HighlightingAssets::default_theme()),
+    );
+    let highlighter = miette::highlighters::SyntectHighlighter::new(
+        assets.get_syntax_set().unwrap().clone(),
+        theme.clone(),
+        false,
+    );
+    miette::set_hook(Box::new(move |_| {
+        Box::new(
+            miette::MietteHandlerOpts::new()
+                .context_lines(10)
+                .with_syntax_highlighting(highlighter.clone())
+                .build(),
+        )
+    }))?;
+
+    let client = args
+        .clickhouse_url
+        .clone()
+        .map(|url| clickhouse_client::HttpClient::new(url, true /* auto-decompress */));
+
+    if args.watch && args.input.is_file() {
+        // Watch mode
+        let (tx, rx) = std::sync::mpsc::channel();
+        let mut debouncer =
+            notify_debouncer_mini::new_debouncer(std::time::Duration::from_millis(500), tx)?;
+        debouncer.watcher().watch(
+            std::path::Path::new(args.input.filename()),
+            notify_debouncer_mini::notify::RecursiveMode::NonRecursive,
+        )?;
+        loop {
+            if let Err(e) = process_one(&args, &client).await {
+                error!("{}", e);
+            }
+            info!("Watching {} for changes", args.input.filename());
+            rx.recv().unwrap()?;
+        }
+    } else {
+        process_one(&args, &client).await?;
+    }
+
     Ok(())
 }

@@ -78,6 +78,8 @@ Options:
           [possible values: sql, jsonnet, json]
       --clickhouse-url <CLICKHOUSE_URL>
           Clickhouse HTTP URL, to execute queries [env: SQLSONNET_CLICKHOUSE=]
+  -w, --watch
+          Watch for file changes
   -J, --jpath <JPATH>
           Library path [env: JSONNET_PATH=]
   -e, --execute

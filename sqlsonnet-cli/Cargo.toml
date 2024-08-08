@@ -13,7 +13,7 @@ sqlsonnet = { path = "../sqlsonnet", features = ["fancy", "from-sql"] }
 clickhouse-client = { path = "../clickhouse-client" }
 
 bat = { version = "0.24.0", default-features = false }
-clap-stdin = "0.4.0"
+clap-stdin = "0.5.1"
 clap.workspace = true
 miette = { version = "7.2.0", features = ["fancy", "syntect-highlighter"] }
 lazy_static.workspace = true
@@ -22,6 +22,7 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 reqwest.workspace = true
+notify-debouncer-mini = "0.4.1"
 
 [dev-dependencies]
 anyhow.workspace = true
