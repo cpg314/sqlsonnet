@@ -21,6 +21,10 @@ eval $COMMAND --help
 [tasks.cross]
 dependencies = ["playground-proxy"]
 
+[tasks.docs]
+command = "cargo"
+args = ["doc", "--workspace", "--all-features"]
+
 [tasks.checkalot]
 dependencies = ["playground-proxy", "docker-compose"]
 command = "checkalot"
