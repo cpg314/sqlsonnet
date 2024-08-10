@@ -2,6 +2,7 @@
 name = "clickhouse-proxy"
 version.workspace = true
 edition = "2021"
+publish = false
 
 [[bin]]
 name = "sqlsonnet_clickhouse_proxy"
@@ -9,7 +10,8 @@ path = "src/clickhouse_proxy.rs"
 doc = false
 
 [dependencies]
-clickhouse-client = { path = "../clickhouse-client" }
+clickhouse-client.workspace = true
+sqlsonnet.workspace = true
 
 anyhow.workspace = true
 axum = { version = "0.7.5", features = ["ws"] }
@@ -21,7 +23,6 @@ futures = "0.3.30"
 itertools.workspace = true
 reqwest.workspace = true
 serde.workspace = true
-sqlsonnet = { path = "../sqlsonnet" }
 thiserror.workspace = true
 tokio.workspace = true
 tokio-util = { version = "0.7.11", features = ["io", "io-util"] }
@@ -39,4 +40,4 @@ lazy_static.workspace = true
 regex = "1.10.5"
 
 [dev-dependencies]
-sqlsonnet-macros = { path = "../macros" }
+sqlsonnet-macros.workspace = true

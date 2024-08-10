@@ -5,20 +5,20 @@ edition = "2021"
 
 [dependencies]
 itertools.workspace = true
-jrsonnet-evaluator = { git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-evaluator", rev = "b5bef1a20c157918c8b4265f68e29d398d5e483a", features = ["exp-null-coaelse"] }
+jrsonnet-evaluator = { version = "0.5.0-cpg1", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-evaluator", rev = "b5bef1a20c157918c8b4265f68e29d398d5e483a", features = ["exp-null-coaelse"] }
 jrsonnet-gcmodule = "0.3.6"
-jrsonnet-parser = { git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-parser", rev = "b5bef1a20c157918c8b4265f68e29d398d5e483a", features = ["exp-null-coaelse"] }
-jrsonnet-stdlib = { git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-stdlib", rev = "b5bef1a20c157918c8b4265f68e29d398d5e483a", features = ["exp-null-coaelse"] }
+jrsonnet-parser.workspace = true
+jrsonnet-stdlib = { version = "0.5.0-cpg1", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-stdlib", rev = "b5bef1a20c157918c8b4265f68e29d398d5e483a", features = ["exp-null-coaelse"] }
 miette = { version = "7.2.0" }
 pest = { version = "2.7.10", optional = true }
 pest_derive = { version = "2.7.10", features = ["grammar-extras"], optional = true }
 pretty_assertions = "1.4.0"
-serde = { version = "1.0.203", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde_with = "3.8.1"
 thiserror.workspace = true
 tracing-subscriber.workspace = true
-sqlsonnet-macros = { path = "../macros" }
+sqlsonnet-macros.workspace = true
 
 [features]
 fancy = ["miette/fancy", "miette/syntect-highlighter"]

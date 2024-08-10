@@ -8,4 +8,4 @@ proc-macro = true
 
 [dependencies]
 quote = "1.0.36"
-jrsonnet-parser = { git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-parser", rev = "b5bef1a20c157918c8b4265f68e29d398d5e483a" }
+jrsonnet-parser.workspace = true

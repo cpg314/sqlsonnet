@@ -3,10 +3,15 @@ version = "0.1.8"
 edition = "2021"
 
 [workspace.dependencies]
+sqlsonnet = { version = "0.1.8", path = "sqlsonnet" }
+sqlsonnet-macros = { version = "0.1.8", path = "macros" }
+clickhouse-client = { version = "0.1.8", path = "clickhouse-client" }
+
 anyhow = "1.0.86"
 clap = { version = "4.5.7", features = ["derive", "env"] }
 itertools = "0.13.0"
-serde = "1.0"
+# https://github.com/serde-rs/serde/issues/2792
+serde = "=1.0.204"
 thiserror = "1.0.61"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
@@ -16,6 +21,8 @@ lazy_static = "1.5.0"
 tokio = { version = "1.38.0", features = ["full"] }
 reqwest = { version = "0.12.4", features = ["rustls-tls", "json", "gzip", "zstd", "stream"], default-features = false }
 http = "1.0.0"
+jrsonnet-parser = { version = "0.5.0-cpg1", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-parser", rev = "b5bef1a20c157918c8b4265f68e29d398d5e483a", features = ["exp-null-coaelse"] }
+
 
 [workspace]
 members = ["sqlsonnet", "clickhouse-proxy", "sqlsonnet-cli", "clickhouse-client", "bindings/wasm", "macros"]
