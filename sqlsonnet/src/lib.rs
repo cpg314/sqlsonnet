@@ -37,11 +37,11 @@ macro_rules! impl_conversions {
                 Ok(from_sql::query_from_sql(input, $rule)?)
             }
             /// Convert from Jsonnet.
-            pub fn from_jsonnet<'a, R: jsonnet::ImportResolver>(
+            pub fn from_jsonnet<R: jsonnet::ImportResolver>(
                 input: &str,
-                options: impl Into<jsonnet::Options<'a, R>>,
+                options: jsonnet::Options<R>,
             ) -> Result<Self, Error> {
-                let json = jsonnet::evaluate(input, options.into())?;
+                let json = jsonnet::evaluate(input, options)?;
                 Ok(serde_json::from_str(&json)
                     .map_err(|e| crate::error::JsonError::from(&json, e))?)
             }

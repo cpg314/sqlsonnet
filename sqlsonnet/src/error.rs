@@ -13,6 +13,8 @@ pub enum Error {
     #[error(transparent)]
     #[diagnostic(transparent)]
     SqlParse(#[from] SQLParseError),
+    #[error("Invalid jsonnet value (must cast to finite f64)")]
+    InvalidValue(#[from] jrsonnet_evaluator::val::ConvertNumValueError),
 }
 
 #[derive(thiserror::Error, Diagnostic, Debug)]

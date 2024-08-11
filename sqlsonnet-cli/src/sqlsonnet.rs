@@ -161,10 +161,10 @@ async fn process_one(
         // TODO: Support passing a single query.
         let queries = Queries::from_jsonnet(
             &contents,
-            sqlsonnet::jsonnet::Options {
+            sqlsonnet::jsonnet::Options::new(
                 resolver,
-                agent: concat!(env!("CARGO_BIN_NAME"), " ", env!("CARGO_PKG_VERSION")),
-            },
+                concat!(env!("CARGO_BIN_NAME"), " ", env!("CARGO_PKG_VERSION")),
+            ),
         )?;
 
         let has = |l| display_format.iter().any(|l2| l2 == &l);

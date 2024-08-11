@@ -26,7 +26,10 @@ impl From<Error> for JsValue {
 pub fn to_sql(input: &str) -> Result<String, Error> {
     let query = Query::from_jsonnet(
         &format!("{}\n{}", sqlsonnet::jsonnet::import_utils(), input),
-        FsResolver::default(),
+        sqlsonnet::jsonnet::Options::new(
+            FsResolver::default(),
+            concat!(env!("CARGO_CRATE_NAME"), " ", env!("CARGO_PKG_VERSION")),
+        ),
     )?;
     Ok(query.to_sql(false))
 }

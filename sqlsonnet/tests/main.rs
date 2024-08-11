@@ -3,6 +3,7 @@ use pretty_assertions::assert_eq;
 use sqlsonnet::{jsonnet::Options, Queries, Query};
 
 #[test]
+#[cfg(feature = "from-sql")]
 fn sql_roundtrip() -> anyhow::Result<()> {
     // SQL to Query
     let input = include_str!("data/test.sql");

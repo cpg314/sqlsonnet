@@ -57,10 +57,7 @@ fn decode_query(
 ) -> Result<String, Error> {
     let queries = Queries::from_jsonnet(
         request,
-        sqlsonnet::jsonnet::Options {
-            resolver: state.resolver,
-            agent: &agent,
-        },
+        sqlsonnet::jsonnet::Options::new(state.resolver, &agent),
     )?;
     let mut query = if queries.len() == 1 {
         queries.into_iter().next().unwrap()

@@ -4,10 +4,10 @@ mod resolver;
 pub use formatter::Jsonnet;
 pub use resolver::{FsResolver, ImportResolver};
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 
-pub use jrsonnet_evaluator::parser::SourcePath;
-use jrsonnet_evaluator::trace::PathResolver;
+pub use jrsonnet_evaluator::{parser::SourcePath, trace::PathResolver, val::NumValue, Val};
 pub use jrsonnet_gcmodule;
 use jrsonnet_gcmodule::Trace;
 
@@ -38,26 +38,66 @@ fn evaluate_snippet(
 }
 
 /// Options for jsonnet interpretation.
-pub struct Options<'a, R: ImportResolver> {
+pub struct Options<R: ImportResolver> {
     /// Import resolver
     pub resolver: R,
-    /// User agent, stored in [`AGENT_VAR`]
-    pub agent: &'a str,
+    ext_vars: HashMap<String, Val>,
 }
-
-impl Default for Options<'static, FsResolver> {
+impl Default for Options<FsResolver> {
     fn default() -> Self {
         Self {
             resolver: FsResolver::default(),
-            agent: "",
+            ext_vars: Default::default(),
         }
     }
 }
-impl<R: ImportResolver> From<R> for Options<'static, R> {
-    fn from(resolver: R) -> Self {
+
+pub trait Value {
+    fn try_into_val(self) -> Result<Val, crate::Error>;
+}
+impl Value for &str {
+    fn try_into_val(self) -> Result<Val, crate::Error> {
+        Ok(Val::from(self))
+    }
+}
+macro_rules! val {
+    ($t: ty) => {
+        impl Value for $t {
+            fn try_into_val(self) -> Result<Val, crate::Error> {
+                Ok(Val::Num(NumValue::try_from(self)?))
+            }
+        }
+    };
+}
+macro_rules! val_infaillible {
+    ($t: ty) => {
+        impl Value for $t {
+            fn try_into_val(self) -> Result<Val, crate::Error> {
+                Ok(Val::Num(NumValue::try_from(self).unwrap()))
+            }
+        }
+    };
+}
+val!(f32);
+val!(f64);
+val_infaillible!(u16);
+val_infaillible!(i16);
+val_infaillible!(u8);
+val_infaillible!(i8);
+val!(u64);
+val!(i64);
+val_infaillible!(u32);
+val_infaillible!(i32);
+
+impl<R: ImportResolver> Options<R> {
+    pub fn add_var(&mut self, name: &str, var: impl Value) -> Result<(), crate::Error> {
+        self.ext_vars.insert(name.into(), var.try_into_val()?);
+        Ok(())
+    }
+    pub fn new(resolver: R, agent: &str) -> Self {
         Self {
             resolver,
-            agent: "",
+            ext_vars: HashMap::from([(AGENT_VAR.into(), agent.into())]),
         }
     }
 }
@@ -65,14 +105,19 @@ impl<R: ImportResolver> From<R> for Options<'static, R> {
 /// Evaluate Jsonnet into JSON
 pub fn evaluate<R: ImportResolver>(
     jsonnet: &str,
-    options: Options<R>,
+    mut options: Options<R>,
 ) -> Result<String, crate::error::JsonnetError> {
     let mut state = jrsonnet_evaluator::StateBuilder::default();
     state.import_resolver(options.resolver.to_resolver());
 
     let context = jrsonnet_stdlib::ContextInitializer::new(PathResolver::new_cwd_fallback());
-    // We should always set this, as it is not possible to know if an extVar is defined at runtime
-    context.add_ext_str(AGENT_VAR.into(), options.agent.into());
+    // Make sure AGENT_VAR is always set as it is not possible to know if an extVar is defined at runtime
+    options.ext_vars.entry(AGENT_VAR.into()).or_default();
+    // Add variables
+    for (k, v) in options.ext_vars {
+        context.add_ext_var(k.into(), v);
+    }
+
     state.context_initializer(context);
 
     let state = state.build();
