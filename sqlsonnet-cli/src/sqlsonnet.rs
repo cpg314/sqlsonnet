@@ -62,7 +62,7 @@ struct Flags {
     #[clap(long, short)]
     watch: bool,
     /// Library path
-    #[clap(long, short = 'J', env = "JSONNET_PATH", value_delimiter = ',')]
+    #[clap(long, short = 'J', env = "JSONNET_PATH", value_delimiter = ':')]
     jpath: Option<Vec<PathBuf>>,
 }
 

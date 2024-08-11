@@ -36,7 +36,7 @@ pub struct Flags {
     #[clap(long)]
     pub cache: Option<PathBuf>,
     /// Folder with Jsonnet library files
-    #[clap(long, env = "JSONNET_PATH", value_delimiter = ',')]
+    #[clap(long, env = "JSONNET_PATH", value_delimiter = ':')]
     pub library: Option<Vec<PathBuf>>,
     /// Folder with shared snippets
     #[clap(long)]
