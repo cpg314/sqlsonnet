@@ -75,9 +75,23 @@ fn examples() -> anyhow::Result<()> {
 // Deserialize Queries from a Query.
 #[test]
 fn queries_single() -> anyhow::Result<()> {
-    let s = sqlsonnet_macros::sqlsonnet!({ select: { fields: [1] } });
+    let s = sqlsonnet_macros::sqlsonnet_lit!({ select: { fields: [1] } });
     let queries = run_queries(s)?;
     let query = run_query(s)?;
     assert_eq!(queries, vec![query].into());
+    Ok(())
+}
+
+#[test]
+fn query_macro() -> anyhow::Result<()> {
+    let sql = sqlsonnet::sqlsonnet_query!(
+        { select: { fields:
+                           [ 1 + 1 ] + [ std.extVar(s) for s in ["col2", "col3", "col4"] ]  } },
+               col2 = 10,
+               col3 = "test",
+               col4 = 42.50
+    )?
+    .to_sql(true);
+    assert_eq!(sql, "SELECT 2, 10, test, 42.5");
     Ok(())
 }

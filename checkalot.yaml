@@ -37,6 +37,10 @@ checks:
     command: cargo nextest run -r
 
   - type: command
+    name: doctest
+    command: cargo test --doc --workspace -r
+
+  - type: command
     name: typos
     command: typos sqlsonnet clickhouse-proxy README.md
     fix_command: typos -w sqlsonnet clickhouse-proxy README.md

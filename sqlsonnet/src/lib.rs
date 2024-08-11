@@ -3,11 +3,9 @@
 //! ## Usage from Rust
 //!
 //! ```
-//! use sqlsonnet::{Query, sqlsonnet, jsonnet::Options};
+//! use sqlsonnet::{Query, sqlsonnet_query, jsonnet::Options};
 //! // This performs compile-time syntax checking
-//! let jsonnet: &str = sqlsonnet!({ select: { fields: ["name", "age"], from: "contacts" } });
-//! // Parse jsonnet
-//! let query = Query::from_jsonnet(jsonnet, Options::default()).unwrap();
+//! let query: Query = sqlsonnet_query!({ select: { fields: ["name", "age"], from: "contacts" } }).unwrap();
 //! // Convert to SQL
 //! assert_eq!(query.to_sql(true), "SELECT name, age FROM contacts");
 //! ```
@@ -22,7 +20,7 @@ mod to_sql;
 pub use jsonnet::Jsonnet;
 pub use queries::{Queries, Query};
 
-pub use sqlsonnet_macros::sqlsonnet;
+pub use sqlsonnet_macros::{sqlsonnet_lit, sqlsonnet_query};
 
 macro_rules! impl_conversions {
     ($t: ty, $rule: path) => {
