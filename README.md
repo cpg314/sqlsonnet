@@ -123,6 +123,17 @@ This mode is useful to discover the sqlsonnet syntax from SQL queries.
 
 The parser is far from perfect. Expressions are parsed as long as subqueries are encountered; then they are simply represented as strings. The results do not use the [embedded utility functions](sqlsonnet/utils.libsonnet), which can significantly simplify expressions.
 
+## As a Rust library
+
+```rust
+use sqlsonnet::{Query, sqlsonnet_query, jsonnet::Options};
+
+// This performs compile-time syntax checking
+let query: Query = sqlsonnet_query!({ select: { fields: ["name", "age"], from: "contacts" } }).unwrap();
+// Convert to SQL
+assert_eq!(query.to_sql(true), "SELECT name, age FROM contacts");
+```
+
 ## Syntax
 
 ```jsonnet
