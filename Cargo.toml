@@ -22,7 +22,7 @@ lazy_static = "1.5.0"
 tokio = { version = "1.38.0", features = ["full"] }
 reqwest = { version = "0.12.4", features = ["rustls-tls", "json", "gzip", "zstd", "stream"], default-features = false }
 http = "1.0.0"
-jrsonnet-parser = { version = "0.5.0-cpg1", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-parser", rev = "b5bef1a20c157918c8b4265f68e29d398d5e483a", features = ["exp-null-coaelse"] }
+jrsonnet-parser = { version = "0.5.0-pre96", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-parser", tag = "v0.5.0-patch", features = ["exp-null-coaelse"] }
 
 
 [workspace]
