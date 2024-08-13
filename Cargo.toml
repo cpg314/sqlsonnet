@@ -11,8 +11,7 @@ clickhouse-client = { version = "0.1.9", path = "clickhouse-client" }
 anyhow = "1.0.86"
 clap = { version = "4.5.7", features = ["derive", "env"] }
 itertools = "0.13.0"
-# https://github.com/serde-rs/serde/issues/2792
-serde = "=1.0.204"
+serde = "1.0"
 thiserror = "1.0.61"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

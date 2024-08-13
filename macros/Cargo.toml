@@ -10,5 +10,5 @@ proc-macro = true
 [dependencies]
 quote = "1.0.36"
 jrsonnet-parser.workspace = true
-syn = "2.0.73"
-proc-macro2 = "1.0.86"
+syn = "2.0.66"
+proc-macro2 = "1.0.85"
