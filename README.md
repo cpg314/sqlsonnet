@@ -30,11 +30,11 @@ In-browser playground/demo with [WebAssembly](https://en.wikipedia.org/wiki/WebA
 ### Features
 
 - Command-line interface to convert sqlsonnet to SQL, and vice-versa.
-  - Good error reporting thanks to [miette](https://docs.rs/miette/latest/miette/index.html).
+  - Good error reporting thanks to [`miette`](https://docs.rs/miette/latest/miette/index.html).
 - Compatible with existing Jsonnet tools (formatter, LSP).
 - Proxy server for Clickhouse (HTTP interface), supporting incoming sqlsonnet or SQL.
   - Shared library and prelude.
-  - Response caching (similarly to [chproxy](https://www.chproxy.org/)).
+  - Response caching (similarly to [`chproxy`](https://www.chproxy.org/)).
   - Interactive playground.
 - Bindings for [WebAssembly](https://en.wikipedia.org/wiki/WebAssembly).
 - In-browser [interactive playground](https://cpg314.github.io/sqlsonnet/), using the WebAssembly bindings.
@@ -278,7 +278,7 @@ Features:
 - Caching
 - Library shared across clients
 - Prelude
-- End-to-end compression: when the `Accept-Encoding` header is set by the client, the server directly forwards the encoed data.
+- End-to-end compression: when the `Accept-Encoding` header is set by the client, the server directly forwards the encoded data.
 
 ## Implementation details
 

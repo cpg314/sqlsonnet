@@ -135,12 +135,12 @@ async fn process_one(
     if args.from_sql {
         info!("Converting SQL file {}", filename);
         let queries = Queries::from_sql(&input)?;
-        let has = |l| display_format.iter().any(|l2| l2 == &l);
+        let has_df = |l| display_format.iter().any(|l2| l2 == &l);
         let sql = queries.to_sql(args.compact);
-        if has(Language::Sql) {
+        if has_df(Language::Sql) {
             highlight(&sql, Language::Sql, args)?;
         }
-        if has(Language::Jsonnet) {
+        if has_df(Language::Jsonnet) {
             let jsonnet = queries.as_jsonnet();
             highlight(jsonnet, Language::Jsonnet, args)?;
         }
@@ -157,23 +157,26 @@ async fn process_one(
                 resolver.add(path);
             }
         }
-
-        // TODO: Support passing a single query.
-        let queries = Queries::from_jsonnet(
+        let queries_json = sqlsonnet::jsonnet::evaluate(
             &contents,
             sqlsonnet::jsonnet::Options::new(
                 resolver,
                 concat!(env!("CARGO_BIN_NAME"), " ", env!("CARGO_PKG_VERSION")),
             ),
-        )?;
+        )
+        .map_err(sqlsonnet::Error::from)?;
+        let queries = Queries::from_json(&queries_json)?;
 
-        let has = |l| display_format.iter().any(|l2| l2 == &l);
+        let has_df = |l| display_format.iter().any(|l2| l2 == &l);
         // Display queries
         debug!("{:#?}", queries);
-        if has(Language::Jsonnet) {
+        if has_df(Language::Jsonnet) {
             highlight(&contents, Language::Jsonnet, args)?;
         }
-        if has(Language::Sql) {
+        if has_df(Language::Json) {
+            highlight(&queries_json, Language::Json, args)?;
+        }
+        if has_df(Language::Sql) {
             highlight(queries.to_sql(args.compact), Language::Sql, args)?;
         }
         if let Some(client) = client {

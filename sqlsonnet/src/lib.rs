@@ -34,14 +34,17 @@ macro_rules! impl_conversions {
             pub fn from_sql(input: &str) -> Result<Self, Error> {
                 Ok(from_sql::query_from_sql(input, $rule)?)
             }
+            /// Convert from JSON.
+            pub fn from_json(json: &str) -> Result<Self, Error> {
+                Ok(serde_json::from_str(&json)
+                    .map_err(|e| crate::error::JsonError::from(&json, e))?)
+            }
             /// Convert from Jsonnet.
             pub fn from_jsonnet<R: jsonnet::ImportResolver>(
                 input: &str,
                 options: jsonnet::Options<R>,
             ) -> Result<Self, Error> {
-                let json = jsonnet::evaluate(input, options)?;
-                Ok(serde_json::from_str(&json)
-                    .map_err(|e| crate::error::JsonError::from(&json, e))?)
+                Self::from_json(&jsonnet::evaluate(input, options)?)
             }
             /// Convert to SQL.
             pub fn to_sql(&self, compact: bool) -> String {
