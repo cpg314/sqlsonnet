@@ -17,11 +17,13 @@ use metrics_exporter_prometheus::PrometheusBuilder;
 use tracing::*;
 
 use clickhouse_client::ClickhouseQuery;
-use sqlsonnet::{jsonnet::FsResolver, Queries, Query};
+use sqlsonnet::{Queries, Query};
 
 lazy_static::lazy_static! {
     pub static ref VARIABLE_RE: regex::Regex = regex::Regex::new(r#"\$\{(.*?)\}"#).unwrap();
 }
+
+const JPATH_HEADER_KEY: &str = "jpath";
 
 /// Reverse proxies a Clickhouse HTTP server, transforming Jsonnet or JSON queries into SQL.
 ///
@@ -53,12 +55,30 @@ fn decode_query(
     state: State,
     compact: bool,
     limit: Option<usize>,
-    agent: String,
+    headers: axum::http::HeaderMap,
 ) -> Result<String, Error> {
-    let queries = Queries::from_jsonnet(
-        request,
-        sqlsonnet::jsonnet::Options::new(state.resolver, &agent),
-    )?;
+    let agent = headers
+        .get(reqwest::header::USER_AGENT)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or_default()
+        .to_string();
+    let library = if let Some(jpath) = headers.get(JPATH_HEADER_KEY).and_then(|h| h.to_str().ok()) {
+        let jpath = jpath.replace("../", "");
+        debug!(jpath, "Using jpath header");
+        state
+            .args
+            .library
+            .iter()
+            .flatten()
+            .map(|p| p.join(&jpath))
+            .collect()
+    } else {
+        state.args.library.clone().unwrap_or_default()
+    };
+    println!("{:?}", library);
+    let resolver = sqlsonnet::jsonnet::FsResolver::new(library);
+    let queries =
+        Queries::from_jsonnet(request, sqlsonnet::jsonnet::Options::new(resolver, &agent))?;
     let mut query = if queries.len() == 1 {
         queries.into_iter().next().unwrap()
     } else {
@@ -89,16 +109,14 @@ async fn handle_query(
         .join(" ");
     info!(request = request_log, "Handling query");
     let sql = if request.to_lowercase().starts_with("select") {
+        // Nothing to do with SQL
         request
     } else {
+        // Convert Jsonnet to SQL
         let state = state.clone();
         let request = [state.prelude()?, request].join("\n");
-        let agent = headers
-            .get(reqwest::header::USER_AGENT)
-            .and_then(|h| h.to_str().ok())
-            .unwrap_or_default()
-            .to_string();
-        tokio::task::spawn_blocking(move || decode_query(&request, state, true, None, agent))
+        let headers = headers.clone();
+        tokio::task::spawn_blocking(move || decode_query(&request, state, true, None, headers))
             .await??
     };
     state
@@ -139,7 +157,6 @@ impl PreparedRequest {
 struct State {
     client: clickhouse_client::HttpClient,
     args: Arc<Flags>,
-    resolver: Arc<FsResolver>,
     cache: Option<Arc<cache::Cache>>,
 }
 
@@ -148,8 +165,6 @@ impl State {
         Ok(Self {
             // We set the compression to `false` to not decompress the body
             client: clickhouse_client::HttpClient::new(args.url.clone(), false),
-            resolver: sqlsonnet::jsonnet::FsResolver::new(args.library.clone().unwrap_or_default())
-                .into(),
             cache: if let Some(path) = &args.cache {
                 Some(Arc::new(cache::Cache::init(path)?))
             } else {

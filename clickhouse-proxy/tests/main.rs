@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use tracing::*;
 
 /// Integration test which requires a Clickhouse server running (use `cargo make docker-compose`)
@@ -11,6 +13,9 @@ async fn integration() -> anyhow::Result<()> {
     )?;
     let library = tempfile::tempdir()?;
     std::fs::write(library.path().join("test.libsonnet"), "{ answer: 42 }")?;
+    let other = library.path().join("other");
+    std::fs::create_dir_all(&other)?;
+    std::fs::write(other.join("test.libsonnet"), "{ answer: 50 }")?;
 
     // Start proxy
     let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await?;
@@ -63,19 +68,22 @@ async fn integration() -> anyhow::Result<()> {
         assert_eq!(resp.text().await?, "1\n");
     }
 
+    let query: clickhouse_client::ClickhouseQuery = sqlsonnet_macros::sqlsonnet_lit!(
+     local l = import "test.libsonnet";
+     { select: { from: "system.one", fields: [l.answer, u2.count()] } }
+    )
+    .into();
     // Using the embedded and custom libraries
-    let out = client
-        .send_query(
-            &sqlsonnet_macros::sqlsonnet_lit!(
-             local l = import "test.libsonnet";
-             { select: { from: "system.one", fields: [l.answer, u2.count()] } }
-            )
-            .into(),
-        )
-        .await?
-        .text()
-        .await?;
+    let out = client.send_query(&query).await?.text().await?;
     assert_eq!(out, "42\t1\n");
+
+    // Changing the library with the jpath header
+    let query = clickhouse_client::ClickhouseQuery {
+        headers: BTreeMap::from([("jpath".to_string(), "other".to_string())]),
+        ..query
+    };
+    let out = client.prepare_request(&query)?.send().await?.text().await?;
+    assert_eq!(out, "50\t1\n");
 
     Ok(())
 }
