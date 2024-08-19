@@ -41,3 +41,4 @@ regex = "1.10.5"
 
 [dev-dependencies]
 sqlsonnet-macros.workspace = true
+sqlsonnet = { workspace = true, features = ["from-sql"] }
