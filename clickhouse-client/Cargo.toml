@@ -11,3 +11,4 @@ serde.workspace = true
 thiserror.workspace = true
 zstd = "0.13.2"
 tracing.workspace = true
+itertools.workspace = true

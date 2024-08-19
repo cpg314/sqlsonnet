@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tracing::*;
 
@@ -15,11 +16,16 @@ pub enum Error {
     Request(#[from] reqwest::Error),
     #[error("Clickhouse error: {0}")]
     Clickhouse(String),
+    #[error("Invalid header name: {0}")]
+    InvalidHeaderName(#[from] reqwest::header::InvalidHeaderName),
+    #[error("Invalid header value: {0}")]
+    InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum Compression {
     None,
+    #[default]
     Zstd,
 }
 impl Compression {
@@ -56,10 +62,11 @@ impl Compression {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize, Hash)]
 pub struct ClickhouseQuery {
     pub query: String,
     pub params: BTreeMap<String, String>,
+    pub headers: BTreeMap<String, String>,
     pub compression: Compression,
 }
 impl From<&str> for ClickhouseQuery {
@@ -67,6 +74,7 @@ impl From<&str> for ClickhouseQuery {
         Self {
             query: source.into(),
             params: Default::default(),
+            headers: Default::default(),
             compression: Compression::None,
         }
     }
@@ -104,17 +112,28 @@ impl HttpClient {
                 .unwrap(),
         }
     }
-    pub fn prepare_request(&self, query: &ClickhouseQuery) -> PreparedRequest {
+    pub fn prepare_request(&self, query: &ClickhouseQuery) -> Result<PreparedRequest, Error> {
+        let headers: reqwest::header::HeaderMap = query
+            .headers
+            .iter()
+            .map(|(k, v)| {
+                Ok::<_, Error>((
+                    reqwest::header::HeaderName::from_bytes(k.as_bytes())?,
+                    reqwest::header::HeaderValue::from_bytes(v.as_bytes())?,
+                ))
+            })
+            .try_collect()?;
         let mut builder = self
             .client
             .post(self.url.clone())
             .body(query.query.clone())
             .query(&query.params)
+            .headers(headers)
             .header(reqwest::header::TRANSFER_ENCODING, "chunked");
         builder = builder.header(reqwest::header::ACCEPT_ENCODING, query.compression.name());
-        PreparedRequest(builder)
+        Ok(PreparedRequest(builder))
     }
     pub async fn send_query(&self, query: &ClickhouseQuery) -> Result<reqwest::Response, Error> {
-        self.prepare_request(query).send().await
+        self.prepare_request(query)?.send().await
     }
 }

@@ -194,6 +194,7 @@ async fn process_one(
                             args.execute_format.clone(),
                         )]),
                         compression: clickhouse_client::Compression::Zstd,
+                        ..Default::default()
                     })
                     .await?
                     .text()

@@ -109,6 +109,7 @@ async fn handle_query(
                 &headers,
                 reqwest::header::ACCEPT_ENCODING,
             ),
+            ..Default::default()
         })
         .await
 }
@@ -179,19 +180,19 @@ impl State {
             prelude
         ))
     }
-    fn prepare_request(&self, query: ClickhouseQuery) -> PreparedRequest {
+    fn prepare_request(&self, query: ClickhouseQuery) -> Result<PreparedRequest, Error> {
         // Hash query
         let mut hasher = DefaultHasher::default();
         query.hash(&mut hasher);
-        let builder = self.client.prepare_request(&query);
-        PreparedRequest {
+        let builder = self.client.prepare_request(&query)?;
+        Ok(PreparedRequest {
             id: hasher.finish(),
             query: Some(query),
             builder,
-        }
+        })
     }
     async fn send_query(&self, query: ClickhouseQuery) -> Result<axum::response::Response, Error> {
-        let request = self.prepare_request(query);
+        let request = self.prepare_request(query)?;
         if let Some(cache) = &self.cache {
             Ok(cache.process(request).await?)
         } else {
@@ -210,6 +211,7 @@ impl State {
                 query: "SELECT 1+1".into(),
                 params: Default::default(),
                 compression: clickhouse_client::Compression::None,
+                ..Default::default()
             })
             .await?
             .text()

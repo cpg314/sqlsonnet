@@ -234,7 +234,8 @@ mod websocket {
             state.clone(),
             false,
             Some(ROWS_LIMIT),
-            concat!("sqlsonnet-playground ", env!("CARGO_PKG_VERSION")).into(),
+            // TODO: Set the user agent
+            Default::default(),
         )?;
         let data = if message.clickhouse {
             let resp = state
@@ -244,6 +245,7 @@ mod websocket {
                     // We can't ask for compression here, because the client does not have
                     // decompression enabled.
                     compression: clickhouse_client::Compression::None,
+                    ..Default::default()
                 })
                 .await?;
             let resp = axum::body::to_bytes(resp.into_body(), RESP_LIMIT)
