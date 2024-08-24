@@ -76,12 +76,21 @@ async fn integration() -> anyhow::Result<()> {
     // Using the embedded and custom libraries
     let out = client.send_query(&query).await?.text().await?;
     assert_eq!(out, "42\t1\n");
-
     // Changing the library with the jpath header
     let query = clickhouse_client::ClickhouseQuery {
         headers: BTreeMap::from([("jpath".to_string(), "other".to_string())]),
         ..query
     };
+    let out = client.prepare_request(&query)?.send().await?.text().await?;
+    assert_eq!(out, "50\t1\n");
+    // Changing the library with the jpath comment
+    let mut query: clickhouse_client::ClickhouseQuery = sqlsonnet_macros::sqlsonnet_lit!(
+     local l = import "test.libsonnet";
+     // sqlsonnet-jpath: other
+     { select: { from: "system.one", fields: [l.answer, u2.count()] } }
+    )
+    .into();
+    query.headers = BTreeMap::from([("jpath".to_string(), "other".to_string())]);
     let out = client.prepare_request(&query)?.send().await?.text().await?;
     assert_eq!(out, "50\t1\n");
 

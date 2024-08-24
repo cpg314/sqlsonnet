@@ -21,6 +21,7 @@ use sqlsonnet::{Queries, Query};
 
 lazy_static::lazy_static! {
     pub static ref VARIABLE_RE: regex::Regex = regex::Regex::new(r#"\$\{(.*?)\}"#).unwrap();
+    pub static ref JPATH_COMMENT_RE: regex::Regex = regex::Regex::new(r#"//\s*sqlsonnet-jpath:\s*(.*)"#).unwrap();
 }
 
 const JPATH_HEADER_KEY: &str = "jpath";
@@ -62,9 +63,16 @@ fn decode_query(
         .and_then(|h| h.to_str().ok())
         .unwrap_or_default()
         .to_string();
-    let library = if let Some(jpath) = headers.get(JPATH_HEADER_KEY).and_then(|h| h.to_str().ok()) {
-        let jpath = jpath.replace("../", "");
-        debug!(jpath, "Using jpath header");
+
+    let jpath = if let Some(jpath) = headers.get(JPATH_HEADER_KEY).and_then(|h| h.to_str().ok()) {
+        Some(jpath.replace("../", ""))
+    } else {
+        JPATH_COMMENT_RE
+            .captures(request)
+            .map(|cap| cap.get(1).unwrap().as_str().into())
+    };
+    let library = if let Some(jpath) = jpath {
+        warn!(jpath, "Using jpath from header or comment");
         state
             .args
             .library
@@ -75,7 +83,7 @@ fn decode_query(
     } else {
         state.args.library.clone().unwrap_or_default()
     };
-    println!("{:?}", library);
+    debug!("Resolver path: {:?}", library);
     let resolver = sqlsonnet::jsonnet::FsResolver::new(library);
     let queries =
         Queries::from_jsonnet(request, sqlsonnet::jsonnet::Options::new(resolver, &agent))?;
@@ -103,7 +111,7 @@ async fn handle_query(
     // Remove whitespace and comments for logging
     let request_log = request
         .lines()
-        .filter(|l| !l.trim_start().starts_with("//") && !l.is_empty())
+        .filter(|l| !l.is_empty())
         .flat_map(|l| l.split(' '))
         .filter(|l| !l.is_empty())
         .join(" ");
