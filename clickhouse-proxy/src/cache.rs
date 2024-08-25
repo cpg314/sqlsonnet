@@ -34,9 +34,16 @@ pub enum CacheError {
     // TooLarge(usize),
 }
 
+#[derive(PartialEq, Default)]
+enum EntryStatus {
+    #[default]
+    None,
+    Processed,
+    TooLarge,
+}
 pub struct Cache {
     path: PathBuf,
-    entries: Mutex<HashMap<u64, Arc<Mutex<bool /* failed */>>>>,
+    entries: Mutex<HashMap<u64, Arc<Mutex<EntryStatus>>>>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Response {
@@ -54,7 +61,7 @@ impl Response {
     async fn write_adapt(
         mut request: PreparedRequest,
         filename: &Path,
-        mut guard: tokio::sync::OwnedMutexGuard<bool>,
+        mut guard: tokio::sync::OwnedMutexGuard<EntryStatus>,
     ) -> Result<axum::response::Response, Error> {
         let query = request.take_query();
         let resp = request.send().await?;
@@ -102,12 +109,13 @@ impl Response {
                 metrics::counter!("large-responses").increment(1);
                 warn!(size, "Not caching a large response");
                 drop(bw);
-                *guard = true;
+                *guard = EntryStatus::TooLarge;
                 let _ = std::fs::remove_file(filename_tmp);
             } else {
                 bw.flush().await?;
                 std::fs::rename(filename_tmp, filename)?;
             }
+            *guard = EntryStatus::Processed;
             // Remove processing mark
             drop(guard);
             metrics::counter!("response-size").increment(size as u64);
@@ -171,35 +179,26 @@ impl Cache {
         request: PreparedRequest,
     ) -> Result<axum::response::Response, Error> {
         let id = request.id;
-        let entry = self.entries.lock().await.get(&id).cloned();
-        if let Some(entry) = entry {
-            info!("Query already known, waiting for lock");
-            let guard = entry.lock().await;
-            if *guard {
-                warn!("This query previously failed to cache from being too large. Returning directly");
-                return Ok(http::response::Response::from(request.send().await?).into_response());
-            }
-        }
         let filename = self.path.join(id.to_string());
-        if filename.exists() {
-            info!("Reading response from cache");
+        let entry = self.entries.lock().await.entry(id).or_default().clone();
+        // This will block in case this entry is already processing (reading or writing).
+        let mut entry = entry.lock_owned().await;
+        if *entry == EntryStatus::TooLarge {
+            warn!("This query previously failed to cache from being too large. Returning directly");
+            return Ok(http::response::Response::from(request.send().await?).into_response());
+        } else if *entry == EntryStatus::Processed {
             match Response::read(&filename).await {
                 Ok(r) => {
                     metrics::counter!("cache-hits").increment(1);
                     return Ok(r);
                 }
                 Err(e) => {
-                    warn!("Failed reading response from cache: {:?}", e);
+                    warn!("Failed to reach from cache, processing again: {}", e);
+                    *entry = EntryStatus::default();
                 }
             }
         }
-        // Process
-        // Mark as processing
-        let mutex = Arc::<Mutex<_>>::default();
-        self.entries.lock().await.insert(id, mutex.clone());
-        let guard = mutex.lock_owned().await;
-
         metrics::counter!("cache-misses").increment(1);
-        Response::write_adapt(request, &filename, guard).await
+        Response::write_adapt(request, &filename, entry).await
     }
 }

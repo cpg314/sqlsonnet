@@ -42,7 +42,7 @@ async fn integration() -> anyhow::Result<()> {
     // Setup client
     let mut url = reqwest::Url::parse("http://localhost")?;
     url.set_port(Some(port)).unwrap();
-    let client = clickhouse_client::HttpClient::new(url, true);
+    let client = clickhouse_client::HttpClient::new(url.clone(), true);
 
     // Sending SQL
     assert_eq!(
@@ -68,11 +68,11 @@ async fn integration() -> anyhow::Result<()> {
         assert_eq!(resp.text().await?, "1\n");
     }
 
-    let query: clickhouse_client::ClickhouseQuery = sqlsonnet_macros::sqlsonnet_lit!(
+    let query_lit = sqlsonnet_macros::sqlsonnet_lit!(
      local l = import "test.libsonnet";
      { select: { from: "system.one", fields: [l.answer, u2.count()] } }
-    )
-    .into();
+    );
+    let query: clickhouse_client::ClickhouseQuery = query_lit.into();
     // Using the embedded and custom libraries
     let out = client.send_query(&query).await?.text().await?;
     assert_eq!(out, "42\t1\n");
@@ -84,15 +84,25 @@ async fn integration() -> anyhow::Result<()> {
     let out = client.prepare_request(&query)?.send().await?.text().await?;
     assert_eq!(out, "50\t1\n");
     // Changing the library with the jpath comment
-    let mut query: clickhouse_client::ClickhouseQuery = sqlsonnet_macros::sqlsonnet_lit!(
-     local l = import "test.libsonnet";
-     // sqlsonnet-jpath: other
-     { select: { from: "system.one", fields: [l.answer, u2.count()] } }
-    )
-    .into();
+    // NOTE: We use a string instead of the sqlsonnet_lit macro so that the comment does not get
+    //       eaten by rustc.
+    let mut query: clickhouse_client::ClickhouseQuery =
+        format!("//sqlsonnet-jpath: other \n {}", query_lit)
+            .as_str()
+            .into();
     query.headers = BTreeMap::from([("jpath".to_string(), "other".to_string())]);
     let out = client.prepare_request(&query)?.send().await?.text().await?;
     assert_eq!(out, "50\t1\n");
+
+    // Check Prometheus metrics
+    let metrics = reqwest::get(url.join("metrics")?)
+        .await?
+        .error_for_status()?
+        .text()
+        .await?;
+    println!("{}", metrics);
+    assert!(metrics.contains("cache_hits 2"));
+    assert!(metrics.contains("cache_misses 4"));
 
     Ok(())
 }
