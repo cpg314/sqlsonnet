@@ -1,6 +1,5 @@
 // TODO:
 // - Set a timeout on queries, to avoid waiting forever on stuck queries.
-// - Change the Mutex<bool> to Mutex<Status>
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -30,8 +29,6 @@ pub enum CacheError {
     SendBuf,
     #[error("Failed to convert response: {0}")]
     ConvertResponse(http::Error),
-    // #[error("Response too large ({0} bytes)")]
-    // TooLarge(usize),
 }
 
 #[derive(PartialEq, Default)]
@@ -44,7 +41,12 @@ enum EntryStatus {
 pub struct Cache {
     path: PathBuf,
     entries: Mutex<HashMap<u64, Arc<Mutex<EntryStatus>>>>,
+    expiry: Option<chrono::Duration>,
 }
+/// The data is serialized as
+///   Response header (this struct)
+///   Actual response
+/// in bincode  
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Response {
     query: Option<ClickhouseQuery>,
@@ -55,7 +57,8 @@ struct Response {
 impl Response {
     fn bincode_options() -> impl bincode::config::Options {
         bincode::DefaultOptions::new()
-            .with_limit(1_000_000)
+            // Limit at 100 MB
+            .with_limit(100_000_000)
             .allow_trailing_bytes()
     }
     async fn write_adapt(
@@ -141,28 +144,33 @@ impl Response {
         let mut reader = std::fs::File::open(filename)?;
         Ok(Self::bincode_options().deserialize_from(&mut reader)?)
     }
-    async fn read(filename: &Path) -> Result<axum::response::Response, CacheError> {
+    fn age(&self) -> chrono::Duration {
+        chrono::Utc::now() - self.date
+    }
+    async fn read(filename: &Path) -> Result<(Self, axum::response::Response), CacheError> {
         let mut reader = std::fs::File::open(filename)?;
-        let r: Self = Self::bincode_options().deserialize_from(&mut reader)?;
-        let builder = r
+        let header: Self = Self::bincode_options().deserialize_from(&mut reader)?;
+        let builder = header
             .builder()
             .header("X-Cache", "HIT")
-            .header("Age", (chrono::Utc::now() - r.date).num_seconds());
+            .header("Age", header.age().num_seconds());
         let reader = tokio::io::BufReader::new(tokio::fs::File::from(reader));
         let reader = tokio_util::io::ReaderStream::new(reader);
         builder
             .body(axum::body::Body::from_stream(reader))
             .map_err(CacheError::ConvertResponse)
+            .map(|r| (header, r))
     }
 }
 
 impl Cache {
-    pub fn init(path: &Path) -> Result<Self, Error> {
+    pub fn init(path: &Path, expiry: Option<chrono::Duration>) -> Result<Self, Error> {
         info!("Initializing cache");
         std::fs::create_dir_all(path).map_err(CacheError::from)?;
         let s = Self {
             path: path.into(),
             entries: Default::default(),
+            expiry,
         };
         Ok(s)
     }
@@ -188,9 +196,16 @@ impl Cache {
             return Ok(http::response::Response::from(request.send().await?).into_response());
         } else if *entry == EntryStatus::Processed {
             match Response::read(&filename).await {
-                Ok(r) => {
-                    metrics::counter!("cache-hits").increment(1);
-                    return Ok(r);
+                Ok((header, resp)) => {
+                    if self
+                        .expiry
+                        .as_ref()
+                        // Only return if not expired
+                        .map_or(true, |exp| header.age() <= *exp)
+                    {
+                        metrics::counter!("cache-hits").increment(1);
+                        return Ok(resp);
+                    }
                 }
                 Err(e) => {
                     warn!("Failed to reach from cache, processing again: {}", e);

@@ -29,6 +29,8 @@ pub enum Error {
     Websocket(#[from] WebsocketError),
     #[error("jsonnetfmt error: {0}")]
     JsonnetFmt(String),
+    #[error("Invalid duration {0}")]
+    Duration(String),
 }
 
 #[derive(thiserror::Error, Debug)]

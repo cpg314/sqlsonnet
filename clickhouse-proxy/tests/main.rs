@@ -21,12 +21,14 @@ async fn integration() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await?;
     let port = listener.local_addr()?.port();
     drop(listener);
+    let cache_expiry: clickhouse_proxy::Duration = "1s".parse()?;
     let _server = tokio::spawn(async move {
         if let Err(e) = clickhouse_proxy::main_impl(clickhouse_proxy::Flags {
             url: reqwest::Url::parse("http://default@localhost:8123").unwrap(),
             cache: Some(cache.path().into()),
             library: Some(vec![library.path().into()]),
             prelude: Some(prelude.path().into()),
+            cache_expiry: Some(cache_expiry),
             shares: None,
             port,
         })
@@ -56,16 +58,20 @@ async fn integration() -> anyhow::Result<()> {
 
     // Cache
     let query = sqlsonnet::Query::from_sql("SELECT count(*) AS c FROM system.one")?;
-    for i in 0..2 {
+    for i in 0..=2 {
         // Sending Jsonnet
         let resp = client
             .send_query(&query.as_jsonnet().to_string().as_str().into())
             .await?;
         assert_eq!(
             resp.headers().get("X-Cache").unwrap().to_str()?,
-            if i == 0 { "MISS" } else { "HIT" }
+            if i == 1 { "HIT" } else { "MISS" }
         );
         assert_eq!(resp.text().await?, "1\n");
+        if i == 1 {
+            // Wait until the cache expires
+            tokio::time::sleep(chrono::Duration::from(cache_expiry).to_std()?).await;
+        }
     }
 
     let query_lit = sqlsonnet_macros::sqlsonnet_lit!(
@@ -102,7 +108,7 @@ async fn integration() -> anyhow::Result<()> {
         .await?;
     println!("{}", metrics);
     assert!(metrics.contains("cache_hits 2"));
-    assert!(metrics.contains("cache_misses 4"));
+    assert!(metrics.contains("cache_misses 5"));
 
     Ok(())
 }

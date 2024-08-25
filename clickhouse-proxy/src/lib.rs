@@ -22,6 +22,7 @@ use sqlsonnet::{Queries, Query};
 lazy_static::lazy_static! {
     pub static ref VARIABLE_RE: regex::Regex = regex::Regex::new(r#"\$\{(.*?)\}"#).unwrap();
     pub static ref JPATH_COMMENT_RE: regex::Regex = regex::Regex::new(r#"//\s*sqlsonnet-jpath:\s*(.*)"#).unwrap();
+    pub static ref DURATION_RE: regex::Regex = regex::Regex::new(r#"(\d+)\s*(s|m|h|d)"#).unwrap();
 }
 
 const JPATH_HEADER_KEY: &str = "jpath";
@@ -49,6 +50,34 @@ pub struct Flags {
     pub prelude: Option<PathBuf>,
     #[clap(long)]
     pub port: u16,
+    /// Cache expiry time, e.g. 20s, 1m, 1h, 1d
+    #[clap(long)]
+    pub cache_expiry: Option<Duration>,
+}
+#[derive(Clone, Copy)]
+pub struct Duration(chrono::Duration);
+impl From<Duration> for chrono::Duration {
+    fn from(source: Duration) -> Self {
+        source.0
+    }
+}
+
+impl std::str::FromStr for Duration {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let caps = DURATION_RE
+            .captures(s)
+            .ok_or_else(|| Error::Duration(s.into()))?;
+        let number: i64 = caps.get(1).unwrap().as_str().parse().unwrap();
+        let seconds = match caps.get(2).unwrap().as_str() {
+            "s" => number,
+            "m" => 60 * number,
+            "h" => 60 * 60 * number,
+            "d" => 60 * 60 * 24 * number,
+            _ => unreachable!(),
+        };
+        Ok(Self(chrono::Duration::seconds(seconds)))
+    }
 }
 
 fn decode_query(
@@ -174,7 +203,10 @@ impl State {
             // We set the compression to `false` to not decompress the body
             client: clickhouse_client::HttpClient::new(args.url.clone(), false),
             cache: if let Some(path) = &args.cache {
-                Some(Arc::new(cache::Cache::init(path)?))
+                Some(Arc::new(cache::Cache::init(
+                    path,
+                    args.cache_expiry.map(chrono::Duration::from),
+                )?))
             } else {
                 None
             },
