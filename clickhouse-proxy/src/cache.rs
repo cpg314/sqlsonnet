@@ -7,6 +7,7 @@ use std::sync::Arc;
 use axum::http;
 use axum::response::IntoResponse;
 use bincode::Options;
+use clap::Parser;
 use futures::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
@@ -18,6 +19,46 @@ use super::PreparedRequest;
 use crate::ClickhouseQuery;
 
 const LIMIT_BYTES: usize = 10_000_000;
+
+#[derive(Clone, Parser)]
+#[clap(version)]
+pub struct Flags {
+    /// Cache expiry time, e.g. 20s, 1m, 1h, 1d
+    #[clap(long)]
+    pub cache_expiry: Option<Duration>,
+    #[clap(long)]
+    pub cache: Option<PathBuf>,
+    #[clap(long, default_value = "60s")]
+    pub cache_fs_cleanup_interval: Duration,
+}
+#[derive(Clone, Copy)]
+pub struct Duration(std::time::Duration);
+impl From<Duration> for std::time::Duration {
+    fn from(source: Duration) -> Self {
+        source.0
+    }
+}
+
+impl std::str::FromStr for Duration {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        lazy_static::lazy_static! {
+            pub static ref DURATION_RE: regex::Regex = regex::Regex::new(r#"(\d+)\s*(s|m|h|d)"#).unwrap();
+        }
+        let caps = DURATION_RE
+            .captures(s)
+            .ok_or_else(|| Error::Duration(s.into()))?;
+        let number: u64 = caps.get(1).unwrap().as_str().parse().unwrap();
+        let seconds = match caps.get(2).unwrap().as_str() {
+            "s" => number,
+            "m" => 60 * number,
+            "h" => 60 * 60 * number,
+            "d" => 60 * 60 * 24 * number,
+            _ => unreachable!(),
+        };
+        Ok(Self(std::time::Duration::from_secs(seconds)))
+    }
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum CacheError {
@@ -164,7 +205,13 @@ impl Response {
 }
 
 impl Cache {
-    pub fn init(path: &Path, expiry: Option<chrono::Duration>) -> Result<Self, Error> {
+    pub fn init(args: &Flags) -> Result<Option<Self>, Error> {
+        let Some(path) = &args.cache else {
+            return Ok(None);
+        };
+        let expiry = args
+            .cache_expiry
+            .map(|d| chrono::Duration::from_std(d.0).unwrap());
         info!("Initializing cache");
         std::fs::create_dir_all(path).map_err(CacheError::from)?;
         let s = Self {
@@ -172,7 +219,48 @@ impl Cache {
             entries: Default::default(),
             expiry,
         };
-        Ok(s)
+        // Start cache cleanup thread if needed
+        let path = path.to_owned();
+        if let Some(expiry) = expiry {
+            let interval = args.cache_fs_cleanup_interval.0;
+            tokio::task::spawn(async move {
+                loop {
+                    info!("Waiting {:?} to clean filesystem", interval);
+                    tokio::time::sleep(interval).await;
+                    if let Err(e) = Self::cleanup_fs(&path, expiry).await {
+                        warn!("Failed to clean filesystem: {}", e);
+                    }
+                }
+            });
+        }
+        Ok(Some(s))
+    }
+    // We do not have to synchronize this with the `entries` hashmap. It is fine to delete a file
+    // while it is being read: the deletion will not take place until the handle is released, and
+    // it is not assumed that the filesystem is in sync with the hashmap.
+    #[instrument]
+    async fn cleanup_fs(path: &Path, expiry: chrono::Duration) -> Result<(), Error> {
+        info!("Cleaning up filesystem");
+        let mut removed = 0;
+        std::fs::read_dir(path)
+            .map_err(|e| Error::CacheClean(e.to_string()))?
+            .filter_map(Result::ok)
+            .map(|f| {
+                let elapsed = f.metadata()?.created()?.elapsed()?;
+                if chrono::Duration::from_std(elapsed).unwrap() > expiry {
+                    debug!(path=?f.path(), "Removing entry");
+                    removed += 1;
+                    std::fs::remove_file(f.path())?;
+                }
+                anyhow::Ok(())
+            })
+            .for_each(|r| {
+                if let Err(e) = r {
+                    warn!("Failed to clear cache entry: {}", e)
+                }
+            });
+        info!("Done cleaning up filesystem: removed {} files", removed);
+        Ok(())
     }
     #[allow(dead_code)]
     fn list(&self) -> impl Iterator<Item = (Result<Response, CacheError>, PathBuf)> {

@@ -31,6 +31,8 @@ pub enum Error {
     JsonnetFmt(String),
     #[error("Invalid duration {0}")]
     Duration(String),
+    #[error("Failed to clean cache")]
+    CacheClean(String),
 }
 
 #[derive(thiserror::Error, Debug)]
