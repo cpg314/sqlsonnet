@@ -287,6 +287,10 @@ impl ToSql for select::Query {
         }
         if let Some(limit) = &self.limit {
             write!(f, "\nLIMIT {}", limit)?;
+            if let Some(exprs) = &self.limit_by {
+                writeln!(f, " BY")?;
+                exprs.to_sql(&mut f.indented())?;
+            }
         }
         if !self.settings.is_empty() {
             write!(f, "\nSETTINGS ")?;

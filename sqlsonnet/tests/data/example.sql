@@ -45,3 +45,9 @@ WHERE
   (2 >= 1)
   AND (1 = 1)
 ;
+SELECT
+  0
+LIMIT 10 BY
+  id,
+  debits - credits
+;

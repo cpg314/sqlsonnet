@@ -69,4 +69,11 @@
       where: u.eq(1, 1),
     } + u.where_and([u.ge(2, 1)]),
   ),
+  u.select(
+    {
+      fields: [0],
+      limit: 10,
+      limitBy: ['id', u.sub('debits', 'credits')],
+    }
+  ),
 ]
