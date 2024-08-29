@@ -58,10 +58,11 @@ pub struct JsonError {
     pub span: miette::SourceOffset,
 }
 impl JsonError {
-    pub fn from(json: &str, e: serde_json::Error) -> Self {
+    pub fn from(json: &str, e: serde_path_to_error::Error<serde_json::Error>) -> Self {
+        let orig = e.inner();
         Self {
-            reason: e.to_string(),
-            span: miette::SourceOffset::from_location(json, e.line(), e.column()),
+            reason: format!("{}; path `{}`", orig, e.path()),
+            span: miette::SourceOffset::from_location(json, orig.line(), orig.column()),
             src: miette::NamedSource::new("source.json", json.into()),
         }
     }

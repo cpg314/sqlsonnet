@@ -20,6 +20,7 @@ serde_with = "3.8.1"
 thiserror.workspace = true
 tracing-subscriber.workspace = true
 sqlsonnet-macros.workspace = true
+serde_path_to_error = "0.1.16"
 
 [features]
 fancy = ["miette/fancy", "miette/syntect-highlighter"]

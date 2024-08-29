@@ -36,7 +36,8 @@ macro_rules! impl_conversions {
             }
             /// Convert from JSON.
             pub fn from_json(json: &str) -> Result<Self, Error> {
-                Ok(serde_json::from_str(&json)
+                let mut deserializer = serde_json::Deserializer::from_str(&json);
+                Ok(serde_path_to_error::deserialize(&mut deserializer)
                     .map_err(|e| crate::error::JsonError::from(&json, e))?)
             }
             /// Convert from Jsonnet.
