@@ -7,11 +7,11 @@ use super::*;
 pub trait ImportResolver: Trace + Sized {
     fn resolve(&self, from: &SourcePath, path: &str) -> Option<PathBuf>;
     fn load(&self, resolved: &SourcePath) -> Result<Vec<u8>, std::io::Error>;
-    /// This adds the resolution of the embedded utils.libsonnet import.
+    /// This adds the resolution of the embedded sqlsonnet.libsonnet import.
     fn to_resolver(self) -> impl jrsonnet_evaluator::ImportResolver {
         ResolverWrapper {
             inner: self,
-            utils: include_bytes!("../../utils.libsonnet").to_vec(),
+            utils: include_bytes!("../../sqlsonnet.libsonnet").to_vec(),
         }
     }
 }

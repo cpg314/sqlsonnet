@@ -106,7 +106,7 @@ The input should represent a list of queries, e.g.
 [ { select: { ... } } ]
 ```
 
-The [embedded utility functions](sqlsonnet/utils.libsonnet) are automatically imported as
+The [embedded utility functions](sqlsonnet/sqlsonnet.libsonnet) are automatically imported as
 
 ```jsonnet
 local u = import "sqlsonnet.libsonnet";
@@ -121,7 +121,7 @@ $ cat test.sql | sqlsonnet --from-sql -
 
 This mode is useful to discover the sqlsonnet syntax from SQL queries.
 
-The parser is far from perfect. Expressions are parsed as long as subqueries are encountered; then they are simply represented as strings. The results do not use the [embedded utility functions](sqlsonnet/utils.libsonnet), which can significantly simplify expressions.
+The parser is far from perfect. Expressions are parsed as long as subqueries are encountered; then they are simply represented as strings. The results do not use the [embedded utility functions](sqlsonnet/sqlsonnet.libsonnet), which can significantly simplify expressions.
 
 ## As a Rust library
 

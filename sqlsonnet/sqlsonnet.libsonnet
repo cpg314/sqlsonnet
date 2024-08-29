@@ -1,5 +1,5 @@
 // Utilities embedded in sqlsonnet. Use with
-// local u = import 'utils.libsonnet';
+// local u = import 'sqlsonnet.libsonnet';
 {
   op(operator, l, empty=null): if std.length(l) == 0 then empty else if std.length(l) == 1 then l[0] else [l[0], operator, self.op(operator, l[1:], empty)],
   select(x): { select: x },
