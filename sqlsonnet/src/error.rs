@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use miette::{Diagnostic, SourceCode};
+use miette::Diagnostic;
 
 /// Errors
 #[derive(thiserror::Error, Diagnostic, Debug)]
@@ -9,7 +9,7 @@ pub enum Error {
     Jsonnet(#[from] JsonnetError),
     #[error(transparent)]
     #[diagnostic(transparent)]
-    Json(#[from] JsonError),
+    Json(#[from] Box<JsonError>),
     #[error(transparent)]
     #[diagnostic(transparent)]
     SqlParse(#[from] SQLParseError),
@@ -54,16 +54,43 @@ pub struct JsonError {
     pub reason: String,
     #[source_code]
     pub src: miette::NamedSource<String>,
+    #[help]
+    help: String,
     #[label]
-    pub span: miette::SourceOffset,
+    span: miette::SourceSpan,
 }
 impl JsonError {
-    pub fn from(json: &str, e: serde_path_to_error::Error<serde_json::Error>) -> Self {
-        let orig = e.inner();
+    pub fn from(json: &str, e: serde_json::Error) -> Self {
         Self {
-            reason: format!("{}; path `{}`", orig, e.path()),
-            span: miette::SourceOffset::from_location(json, orig.line(), orig.column()),
+            reason: e.to_string(),
+            span: miette::SourceOffset::from_location(json, e.line(), e.column()).into(),
             src: miette::NamedSource::new("source.json", json.into()),
+            help: "Jsonnet generated invalid JSON".into(),
+        }
+    }
+    pub fn from_path(
+        value: serde_json::Value,
+        e: serde_path_to_error::Error<serde_json::Error>,
+    ) -> Self {
+        let orig = e.inner();
+
+        let pointer = std::iter::once("".to_string())
+            .chain(e.path().into_iter().map(|segment| match segment {
+                serde_path_to_error::Segment::Seq { index } => index.to_string(),
+                serde_path_to_error::Segment::Map { key } => key.into(),
+                serde_path_to_error::Segment::Enum { variant } => variant.into(),
+                serde_path_to_error::Segment::Unknown => String::default(),
+            }))
+            .join("/");
+        let element = value
+            .pointer(&pointer)
+            .map(|v| serde_json::to_string_pretty(v).unwrap())
+            .unwrap_or_default();
+        Self {
+            reason: orig.to_string(),
+            span: miette::SourceSpan::new(0.into(), 0),
+            src: miette::NamedSource::new("source.json", element),
+            help: format!("at path {}", e.path()),
         }
     }
 }
@@ -121,24 +148,8 @@ impl From<Error> for FormattedError {
                 }
             }
             Error::Json(json_source) => Self {
-                message: source.to_string(),
-                code: json_source
-                    .src
-                    .read_span(&miette::SourceSpan::new(json_source.span, 1), 2, 2)
-                    .ok()
-                    .and_then(|contents| String::from_utf8(contents.data().into()).ok())
-                    .map(|code| {
-                        let indent = code
-                            .lines()
-                            .filter(|l| !l.is_empty())
-                            .map(|l| l.chars().take_while(|c| c.is_whitespace()).count())
-                            .min()
-                            .unwrap_or_default();
-                        let indent: String = " ".repeat(indent);
-                        code.lines()
-                            .map(|l| l.strip_prefix(&indent).unwrap_or(l))
-                            .join("\n")
-                    }),
+                message: format!("{} {}", source, json_source.help),
+                code: Some(json_source.src.inner().clone()),
                 location: None,
             },
 

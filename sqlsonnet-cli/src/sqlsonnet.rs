@@ -167,7 +167,8 @@ async fn process_one(
         .map_err(sqlsonnet::Error::from)?;
 
         let queries = Queries::from_json(&queries_json).map_err(|e| {
-            eprintln!("{}", queries_json);
+            // TODO: Print on stderr
+            highlight(&queries_json, Language::Json, args).unwrap();
             e
         })?;
 

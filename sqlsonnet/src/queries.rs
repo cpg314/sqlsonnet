@@ -24,7 +24,7 @@ impl<'de> serde::de::Visitor<'de> for Visitor {
         A: serde::de::MapAccess<'de>,
     {
         loop {
-            let Some(key) = map.next_key::<&'de str>()? else {
+            let Some(key) = map.next_key::<String>()? else {
                 break;
             };
             if key == "select" {
