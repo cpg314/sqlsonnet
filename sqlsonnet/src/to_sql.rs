@@ -221,12 +221,13 @@ impl ToSql for join::Join {
     fn to_sql(&self, f: &mut IndentedPrinter) -> fmt::Result {
         if self.on.is_empty() {
             write!(f, "CROSS JOIN ")?;
+            self.from.to_sql(f)
         } else {
-            write!(f, "JOIN ")?;
+            write!(f, "{} ", self.kind.name())?;
+            self.from.to_sql(f)?;
+            writeln!(f)?;
+            self.on.to_sql(&mut f.indented())
         }
-        self.from.to_sql(f)?;
-        writeln!(f)?;
-        self.on.to_sql(&mut f.indented())
     }
 }
 

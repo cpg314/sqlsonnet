@@ -224,7 +224,12 @@ impl FromParsed for queries::join::Join {
         let p = parsed.into_inner();
         let from = queries::from::From::parse(p.find_first_tagged("from").unwrap())?;
         let on = queries::join::On::parse(p.find_first_tagged("cond").unwrap())?;
-        Ok(Self { from, on })
+        Ok(Self {
+            from,
+            on,
+            // TODO: Support other kinds
+            kind: queries::join::Kind::Inner,
+        })
     }
 }
 impl FromParsed for queries::select::Query {

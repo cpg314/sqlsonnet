@@ -222,7 +222,30 @@ pub mod join {
         pub from: from::From,
         #[serde(flatten)]
         pub on: On,
+        #[serde(default)]
+        pub kind: Kind,
     }
+
+    #[derive(Default, Deserialize, Serialize, PartialEq, Eq, Debug, Copy, Clone)]
+    #[serde(rename_all = "kebab-case")]
+    pub enum Kind {
+        #[default]
+        Inner,
+        LeftOuter,
+        RightOuter,
+        FullOuter,
+    }
+    impl Kind {
+        pub fn name(&self) -> &'static str {
+            match self {
+                Kind::Inner => "JOIN",
+                Kind::LeftOuter => "LEFT OUTER JOIN",
+                Kind::RightOuter => "RIGHT OUTER JOIN",
+                Kind::FullOuter => "FULL OUTER JOIN",
+            }
+        }
+    }
+
     #[serde_with::serde_as]
     #[derive(Deserialize, Serialize, PartialEq, Eq, Debug)]
     #[serde(deny_unknown_fields)]

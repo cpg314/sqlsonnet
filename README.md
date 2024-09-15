@@ -165,11 +165,13 @@ assert_eq!(query.to_sql(true), "SELECT name, age FROM contacts");
       // List of joins (optional)
       joins: [
         // From expression and ON (list of boolean expressions)
-        { from: 'a', on: ['f1=f2'] },
+        { from: 'b', on: ['f1=f2'] },
         // From expression and USING (list of column identifiers)
-        { from: 'a', using: ['f'] },
+        { from: 'c', using: ['f'] },
         // An empty `on` or `using` parameter results in a CROSS JOIN
-        { from: 'a', using: [] },
+        { from: 'd', using: [] },
+        // Other types of joints
+        { from: 'e', using: ['f'], kind: 'left-outer' },
       ],
       // Expression (optional). Use u.and, u.or to combine.
       having: true,

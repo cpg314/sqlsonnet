@@ -10,10 +10,14 @@ SELECT
   count(*),
   NOT (1 != 2)
 FROM a
-JOIN a
+JOIN b
   ON
     f1=f2
-JOIN a
+JOIN c
+  USING
+    f
+CROSS JOIN d
+LEFT OUTER JOIN e
   USING
     f
 WHERE
