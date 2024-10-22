@@ -69,7 +69,7 @@ macro_rules! val {
         }
     };
 }
-macro_rules! val_infaillible {
+macro_rules! val_infallible {
     ($t: ty) => {
         impl Value for $t {
             fn try_into_val(self) -> Result<Val, crate::Error> {
@@ -80,14 +80,14 @@ macro_rules! val_infaillible {
 }
 val!(f32);
 val!(f64);
-val_infaillible!(u16);
-val_infaillible!(i16);
-val_infaillible!(u8);
-val_infaillible!(i8);
+val_infallible!(u16);
+val_infallible!(i16);
+val_infallible!(u8);
+val_infallible!(i8);
 val!(u64);
 val!(i64);
-val_infaillible!(u32);
-val_infaillible!(i32);
+val_infallible!(u32);
+val_infallible!(i32);
 
 impl<R: ImportResolver> Options<R> {
     pub fn add_var(&mut self, name: &str, var: impl Value) -> Result<(), crate::Error> {

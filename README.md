@@ -302,9 +302,11 @@ flowchart LR
  SQL --pest--> I[Internal representation] --serde--> JSON --> Jsonnet
 ```
 
-## Building from source
+## Development
 
-Install [cargo make](https://github.com/sagiegurari/cargo-make) and run:
+Install [cargo make](https://github.com/sagiegurari/cargo-make).
+
+### Building from source
 
 ```
 $ cargo make packages
@@ -314,6 +316,21 @@ $ # Build wasm bindings
 $ cargo make wasm
 $ # Build playground
 $ cargo make playground-wasm
+```
+
+### Running checks and tests
+
+Install [checkalot](https://github.com/cpg314/checkalot) and run:
+
+```
+$ cargo checkalot
+```
+
+This runs in particular
+
+```
+$ cargo make docker-compose
+$ cargo nextest run --workspace -r
 ```
 
 ## TODO

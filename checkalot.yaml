@@ -34,7 +34,7 @@ checks:
 
   - type: command
     name: tests
-    command: cargo nextest run -r
+    command: cargo nextest run -r --workspace
 
   - type: command
     name: doctest
