@@ -246,6 +246,11 @@ impl State {
     }
 }
 
+#[derive(serde::Serialize)]
+struct Info {
+    version: &'static str,
+}
+
 pub async fn main_impl(args: Flags) -> anyhow::Result<()> {
     sqlsonnet::setup_logging();
 
@@ -266,6 +271,14 @@ pub async fn main_impl(args: Flags) -> anyhow::Result<()> {
     let app = tracing_layer::add_layer(
         axum::Router::new()
             .route("/", axum::routing::post(handle_query))
+            .route(
+                "/info",
+                axum::routing::get(|| async move {
+                    axum::Json(Info {
+                        version: env!("CARGO_PKG_VERSION"),
+                    })
+                }),
+            )
             .nest("/play", playground::router())
             .route(
                 "/metrics",
