@@ -29,7 +29,11 @@ ORDER BY
   col2 DESC,
   col3
 LIMIT 100
+<<<<<<< HEAD
 SAMPLE 100
+=======
+OFFSET 10
+>>>>>>> e048af0 (Add offset)
 SETTINGS join_algorithm="parallel_hash"
 ;
 SELECT

@@ -52,6 +52,8 @@
       limit: 100,
       // Integer (optional)
       sample: 100,
+      // Integer (optional)
+      offset: 10,
       // List of expressions (optional)
       settings: ['join_algorithm="parallel_hash"'],
     },

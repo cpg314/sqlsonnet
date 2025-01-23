@@ -234,6 +234,7 @@ mod websocket {
             state.clone(),
             false,
             Some(ROWS_LIMIT),
+            None,
             // TODO: Set the user agent
             Default::default(),
         )?;

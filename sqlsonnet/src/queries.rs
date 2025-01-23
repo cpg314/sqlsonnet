@@ -324,6 +324,8 @@ pub mod select {
         pub limit_by: Option<ExprList>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub sample: Option<usize>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub offset: Option<usize>,
         #[serde(default, skip_serializing_if = "ExprList::is_empty")]
         pub settings: ExprList,
     }

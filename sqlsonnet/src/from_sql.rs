@@ -265,6 +265,16 @@ impl FromParsed for queries::select::Query {
                             .unwrap(),
                     )
                 }
+                Rule::offset => {
+                    query.offset = Some(
+                        p.into_inner()
+                            .find_first_tagged("offset")
+                            .unwrap()
+                            .as_str()
+                            .parse()
+                            .unwrap(),
+                    )
+                }
                 Rule::order_by => {
                     query.order_by = FromParsed::parse(p.into_inner().nth(1).unwrap())?;
                 }

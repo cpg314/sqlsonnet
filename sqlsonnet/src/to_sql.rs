@@ -296,6 +296,9 @@ impl ToSql for select::Query {
         if let Some(sample) = &self.sample {
             write!(f, "\nSAMPLE {}", sample)?;
         }
+        if let Some(offset) = &self.offset {
+            write!(f, "\nOFFSET {}", offset)?;
+        }
         if !self.settings.is_empty() {
             write!(f, "\nSETTINGS ")?;
             self.settings.to_sql(f)?;
