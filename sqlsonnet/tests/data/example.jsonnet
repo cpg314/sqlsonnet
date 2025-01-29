@@ -50,6 +50,8 @@
       orderBy: ['col1', { expr: 'col2', order: 'desc' }, { expr: 'col3', order: 'asc' }],
       // Integer (optional)
       limit: 100,
+      // Integer (optional)
+      sample: 100,
       // List of expressions (optional)
       settings: ['join_algorithm="parallel_hash"'],
     },
