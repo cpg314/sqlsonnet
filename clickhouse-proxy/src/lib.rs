@@ -59,7 +59,6 @@ fn decode_query(
     state: State,
     compact: bool,
     limit: Option<usize>,
-    offset: Option<usize>,
     headers: axum::http::HeaderMap,
 ) -> Result<String, Error> {
     let agent = headers
@@ -101,11 +100,6 @@ fn decode_query(
             Query::Select(query) => query.limit = Some(limit),
         }
     }
-    if let Some(offset) = offset {
-        match &mut query {
-            Query::Select(query) => query.offset = Some(offset),
-        }
-    }
     // Submit to Clickhouse and forward reply
     Ok::<String, Error>(query.to_sql(compact))
 }
@@ -133,10 +127,8 @@ async fn handle_query(
         let state = state.clone();
         let request = [state.prelude()?, request].join("\n");
         let headers = headers.clone();
-        tokio::task::spawn_blocking(move || {
-            decode_query(&request, state, true, None, None, headers)
-        })
-        .await??
+        tokio::task::spawn_blocking(move || decode_query(&request, state, true, None, headers))
+            .await??
     };
     state
         .send_query(ClickhouseQuery {
