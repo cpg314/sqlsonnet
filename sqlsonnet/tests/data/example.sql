@@ -29,6 +29,7 @@ ORDER BY
   col2 DESC,
   col3
 LIMIT 100
+SAMPLE 100
 SETTINGS join_algorithm="parallel_hash"
 ;
 SELECT

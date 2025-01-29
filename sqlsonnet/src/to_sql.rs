@@ -293,6 +293,9 @@ impl ToSql for select::Query {
                 exprs.to_sql(&mut f.indented())?;
             }
         }
+        if let Some(sample) = &self.sample {
+            write!(f, "\nSAMPLE {}", sample)?;
+        }
         if !self.settings.is_empty() {
             write!(f, "\nSETTINGS ")?;
             self.settings.to_sql(f)?;
