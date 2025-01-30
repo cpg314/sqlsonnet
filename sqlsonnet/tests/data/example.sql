@@ -30,6 +30,7 @@ ORDER BY
   col3
 LIMIT 100
 SAMPLE 100
+OFFSET 10
 SETTINGS join_algorithm="parallel_hash"
 ;
 SELECT

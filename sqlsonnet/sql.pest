@@ -42,6 +42,7 @@ GROUP_BY = { ^"group by" }
 ORDER_BY = { ^"order by" }
 LIMIT    = { ^"limit" }
 SAMPLE   = { ^"sample" }
+OFFSET   = { ^"offset" }
 WHERE    = { ^"where" }
 HAVING   = { ^"having" }
 USING    = { ^"using" }
@@ -49,7 +50,7 @@ ON       = { ^"on" }
 SELECT   = { ^"select" }
 SETTINGS   = { ^"settings" }
 JOIN     = { ^"inner "? ~ ^"join" }
-KEYWORD  = { ASC | DESC | AS | SELECT | FROM | GROUP_BY | ORDER_BY | WHERE | LIMIT | SAMPLE | JOIN | USING | HAVING | ON | SETTINGS }
+KEYWORD  = { ASC | DESC | AS | SELECT | FROM | GROUP_BY | ORDER_BY | WHERE | LIMIT | OFFSET | SAMPLE | JOIN | USING | HAVING | ON | SETTINGS }
 
 simple_identifier = @{ (ASCII_ALPHA+ ~ (ASCII_ALPHANUMERIC | "_")*) | "*" }
 identifier        = @{ !KEYWORD ~ (simple_identifier ~ ".")? ~ simple_identifier }
@@ -76,7 +77,8 @@ order_expr  = { expr ~ ordering? }
 order_exprs = { order_expr ~ ("," ~ order_expr)* }
 order_by    = { ORDER_BY ~ order_exprs }
 
-limit = { LIMIT ~ #limit = number }
+limit  = { LIMIT ~ #limit = number }
+offset = { OFFSET ~ #offset = number }
 
 sample = { SAMPLE ~ #sample = number }
 
@@ -85,7 +87,7 @@ settings = { SETTINGS ~ exprs }
 fields = { exprs }
 
 select = {
-    SELECT ~ fields ~ (FROM ~ table_or_subquery)? ~ join* ~ where? ~ group_by? ~ having? ~ order_by? ~ limit? ~ sample? ~ settings? ~ ";"?
+    SELECT ~ fields ~ (FROM ~ table_or_subquery)? ~ join* ~ where? ~ group_by? ~ having? ~ order_by? ~ limit? ~ offset? ~ sample? ~ settings? ~ ";"?
 }
 
 query   = { SOI ~ select ~ EOI }
