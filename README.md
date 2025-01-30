@@ -157,6 +157,8 @@ assert_eq!(query.to_sql(true), "SELECT name, age FROM contacts");
         u.eq(1, 2),
         // Function, equivalent to {fn: "count", params: ["*"]}
         u.fn('count', ['*']),
+        // Like operator
+        u.like('text', u.string('%t%')),
       ],
       // From expression (optional)
       from: 'a',

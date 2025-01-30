@@ -33,7 +33,7 @@ JOIN table7
   USING
     c
 WHERE
-  (a = b) AND TRUE AND 1 = 1
+  (a = b) AND TRUE AND 1 = 1 AND a LIKE '%a%'
 GROUP BY
   (a + b) AS c,
   d

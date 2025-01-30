@@ -8,7 +8,8 @@ SELECT
   1 + 2,
   1 = 2,
   count(*),
-  NOT (1 != 2)
+  NOT (1 != 2),
+  text LIKE '%t%'
 FROM a
 SAMPLE 100
 JOIN b

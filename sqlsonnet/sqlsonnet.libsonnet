@@ -20,6 +20,7 @@
   gt(a, b): [a, '>', b],
   lt(a, b): [a, '<', b],
   leq(a, b): [a, '<=', b],
+  like(a, b): [a, 'LIKE', b],
   in_(a, b): [a, 'IN', b],
   not(expr): ['NOT', expr],
   // expr AS as, overriding existing aliases.
