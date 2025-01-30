@@ -21,6 +21,8 @@
         u.fn('count', ['*']),
         // Negation
         u.not(u.neq(1, 2)),
+        // Like operator
+        u.like('text', u.string('%t%')),
       ],
       // From expression (optional)
       // Table name

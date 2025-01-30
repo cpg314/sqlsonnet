@@ -5,7 +5,7 @@ COMMENT    = _{ "--" ~ (!"\n" ~ ANY)* ~ ("\n" | EOI) }
 number = @{ ASCII_DIGIT+ }
 string =  { "'" ~ (!"'" ~ ANY)* ~ "'" }
 // literal  = @{ ASCII_ALPHANUMERIC+ |  "*" }
-infix_op =  { "+" | "-" | "*" | "/" | "=" | ">=" | "<=" | ">" | "<" | AND | OR | IN }
+infix_op =  { "+" | "-" | "*" | "/" | "=" | ">=" | "<=" | ">" | "<" | AND | OR | IN | LIKE }
 op_term  =  { !KEYWORD ~ infix_op ~ term }
 expr     =  { term ~ op_term* ~ as? }
 function = ${ identifier ~ "(" ~ exprs ~ ")" }
@@ -37,6 +37,7 @@ ASC      = { ^"asc" }
 DESC     = { ^"desc" }
 AS       = { ^"as" }
 IN       = { ^"in" }
+LIKE       = { ^"like" }
 FROM     = { ^"from" }
 GROUP_BY = { ^"group by" }
 ORDER_BY = { ^"order by" }
