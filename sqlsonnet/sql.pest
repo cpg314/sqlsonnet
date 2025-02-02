@@ -87,7 +87,7 @@ settings = { SETTINGS ~ exprs }
 fields = { exprs }
 
 select = {
-    SELECT ~ fields ~ (FROM ~ table_or_subquery)? ~ join* ~ where? ~ group_by? ~ having? ~ order_by? ~ limit? ~ offset? ~ sample? ~ settings? ~ ";"?
+    SELECT ~ fields ~ (FROM ~ table_or_subquery)? ~ sample? ~ join* ~ where? ~ group_by? ~ having? ~ order_by? ~ limit? ~ offset? ~ settings? ~ ";"?
 }
 
 query   = { SOI ~ select ~ EOI }

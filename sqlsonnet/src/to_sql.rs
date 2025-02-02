@@ -266,6 +266,9 @@ impl ToSql for select::Query {
             write!(f, "FROM ")?;
             from.to_sql(f)?;
         }
+        if let Some(sample) = &self.sample {
+            write!(f, "\nSAMPLE {}", sample)?;
+        }
         for join in &self.joins {
             writeln!(f)?;
             join.to_sql(f)?;
@@ -292,9 +295,6 @@ impl ToSql for select::Query {
                 writeln!(f, " BY")?;
                 exprs.to_sql(&mut f.indented())?;
             }
-        }
-        if let Some(sample) = &self.sample {
-            write!(f, "\nSAMPLE {}", sample)?;
         }
         if let Some(offset) = &self.offset {
             write!(f, "\nOFFSET {}", offset)?;

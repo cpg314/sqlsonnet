@@ -10,6 +10,7 @@ SELECT
   count(*),
   NOT (1 != 2)
 FROM a
+SAMPLE 100
 JOIN b
   ON
     f1=f2
@@ -29,7 +30,6 @@ ORDER BY
   col2 DESC,
   col3
 LIMIT 100
-SAMPLE 100
 OFFSET 10
 SETTINGS join_algorithm="parallel_hash"
 ;
