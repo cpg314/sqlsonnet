@@ -232,12 +232,26 @@ impl FromParsed for queries::join::Join {
         })
     }
 }
+fn parse_first_tagged<T: std::str::FromStr>(p: Pair<Rule>, tag: &str) -> T
+where
+    T::Err: std::fmt::Debug,
+{
+    p.into_inner()
+        .find_first_tagged(tag)
+        .unwrap()
+        .as_str()
+        .parse()
+        .unwrap()
+}
 impl FromParsed for queries::select::Query {
     fn parse(parsed: Pair<Rule>) -> Result<Self, SQLParseError> {
         assert_eq!(parsed.as_rule(), Rule::select);
         let mut query = queries::select::Query::default();
         for p in parsed.into_inner() {
             let rule = p.as_rule();
+            fn parse_inner<T: FromParsed>(p: Pair<Rule>) -> Result<T, SQLParseError> {
+                FromParsed::parse(p.into_inner().nth(1).unwrap())
+            }
             match rule {
                 Rule::fields => {
                     query.fields = Some(FromParsed::parse(p.into_inner().next().unwrap())?);
@@ -246,52 +260,27 @@ impl FromParsed for queries::select::Query {
                     query.from = Some(FromParsed::parse(p)?);
                 }
                 Rule::limit => {
-                    query.limit = Some(
-                        p.into_inner()
-                            .find_first_tagged("limit")
-                            .unwrap()
-                            .as_str()
-                            .parse()
-                            .unwrap(),
-                    );
+                    query.limit = Some(parse_first_tagged(p, "limit"));
                 }
-                Rule::sample => {
-                    query.sample = Some(
-                        p.into_inner()
-                            .find_first_tagged("sample")
-                            .unwrap()
-                            .as_str()
-                            .parse()
-                            .unwrap(),
-                    )
-                }
-                Rule::offset => {
-                    query.offset = Some(
-                        p.into_inner()
-                            .find_first_tagged("offset")
-                            .unwrap()
-                            .as_str()
-                            .parse()
-                            .unwrap(),
-                    )
-                }
+                Rule::sample => query.sample = Some(parse_first_tagged(p, "sample")),
+                Rule::offset => query.offset = Some(parse_first_tagged(p, "offset")),
                 Rule::order_by => {
-                    query.order_by = FromParsed::parse(p.into_inner().nth(1).unwrap())?;
+                    query.order_by = parse_inner(p)?;
                 }
                 Rule::group_by => {
-                    query.group_by = FromParsed::parse(p.into_inner().nth(1).unwrap())?;
+                    query.group_by = parse_inner(p)?;
                 }
                 Rule::join => {
                     query.joins.push(FromParsed::parse(p)?);
                 }
                 Rule::r#where => {
-                    query.where_ = Some(FromParsed::parse(p.into_inner().nth(1).unwrap())?);
+                    query.where_ = Some(parse_inner(p)?);
                 }
                 Rule::having => {
-                    query.having = Some(FromParsed::parse(p.into_inner().nth(1).unwrap())?);
+                    query.having = Some(parse_inner(p)?);
                 }
                 Rule::settings => {
-                    query.settings = FromParsed::parse(p.into_inner().nth(1).unwrap())?;
+                    query.settings = parse_inner(p)?;
                 }
                 _ => {}
             }
