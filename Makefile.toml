@@ -18,6 +18,9 @@ COMMAND="cargo run -q -r --bin sqlsonnet --"
 eval $COMMAND --help
 '''
 
+[tasks.release]
+dependencies = ["update-pages-branch"]
+
 [tasks.cross]
 dependencies = ["playground-proxy"]
 
@@ -106,6 +109,7 @@ git branch -f pages main
 git checkout pages
 git add docs
 git commit -m Playground
+git push -f origin pages
 git checkout main
 git --no-pager log pages -n1
 '''
