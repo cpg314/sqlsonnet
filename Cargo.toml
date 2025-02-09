@@ -1,12 +1,12 @@
 [workspace.package]
-version = "0.1.13"
+version = "0.1.14"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
-sqlsonnet = { version = "0.1.13", path = "sqlsonnet" }
-sqlsonnet-macros = { version = "0.1.13", path = "macros" }
-clickhouse-client = { version = "0.1.13", path = "clickhouse-client" }
+sqlsonnet = { version = "0.1.14", path = "sqlsonnet" }
+sqlsonnet-macros = { version = "0.1.14", path = "macros" }
+clickhouse-client = { version = "0.1.14", path = "clickhouse-client" }
 
 anyhow = "1.0.86"
 clap = { version = "4.5.7", features = ["derive", "env"] }
