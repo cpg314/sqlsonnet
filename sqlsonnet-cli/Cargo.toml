@@ -1,8 +1,10 @@
 [package]
 name = "sqlsonnet-cli"
 version.workspace = true
+license.workspace = true
+repository.workspace = true
+description.workspace = true
 edition = "2021"
-publish = false
 
 [[bin]]
 name = "sqlsonnet"
@@ -11,7 +13,7 @@ doc = false
 
 [dependencies]
 sqlsonnet = { workspace = true, features = ["fancy", "from-sql"] }
-clickhouse-client.workspace = true
+sqlsonnet-clickhouse-client.workspace = true
 
 bat = { version = "0.24.0", default-features = false }
 clap-stdin = "0.5.1"

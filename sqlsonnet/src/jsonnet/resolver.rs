@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use super::*;
+use crate::jrsonnet::*;
 
 /// A simpler version of [`jrsonnet_evaluator::ImportResolver`], so that we can
 /// easily implement it on `Arc<T>`.
@@ -105,6 +106,7 @@ impl<T: ImportResolver + Trace + 'static> jrsonnet_evaluator::ImportResolver
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+    #[cfg(feature = "jrsonnet-96")]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }

@@ -3,6 +3,7 @@ use std::io::IsTerminal;
 use std::path::PathBuf;
 
 use clap::Parser;
+use sqlsonnet_clickhouse_client as clickhouse_client;
 use tracing::*;
 
 use sqlsonnet::Queries;

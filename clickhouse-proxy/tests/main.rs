@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use sqlsonnet_clickhouse_client as clickhouse_client;
+use sqlsonnet_clickhouse_proxy as clickhouse_proxy;
 use tracing::*;
 
 /// Integration test which requires a Clickhouse server running (use `cargo make docker-compose`)

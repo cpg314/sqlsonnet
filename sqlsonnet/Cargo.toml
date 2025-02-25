@@ -3,13 +3,19 @@ name = "sqlsonnet"
 version.workspace = true
 edition = "2021"
 license.workspace = true
+description.workspace = true
+repository.workspace = true
+readme.workspace = true
 
 [dependencies]
 itertools.workspace = true
-jrsonnet-evaluator = { version = "0.5.0-pre96", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-evaluator", tag = "v0.5.0-patch", features = ["exp-null-coaelse"] }
 jrsonnet-gcmodule = "0.3.6"
-jrsonnet-parser.workspace = true
-jrsonnet-stdlib = { version = "0.5.0-pre96", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-stdlib", tag = "v0.5.0-patch", features = ["exp-null-coaelse"] }
+jrsonnet-evaluator-95 = { package = "jrsonnet-evaluator", version = "0.5.0-pre95", features = ["exp-null-coaelse"], optional = true}
+jrsonnet-evaluator-96 = { version = "0.5.0-pre96", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-evaluator", tag = "v0.5.0-patch", features = ["exp-null-coaelse"], optional = true }
+jrsonnet-parser-95 = { workspace = true, optional = true }
+jrsonnet-parser-96 = { workspace = true, optional = true }
+jrsonnet-stdlib-95 = { package = "jrsonnet-stdlib", version = "0.5.0-pre95", features = ["exp-null-coaelse"], optional = true}
+jrsonnet-stdlib-96 = { version = "0.5.0-pre96", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-stdlib", tag = "v0.5.0-patch", features = ["exp-null-coaelse"], optional = true }
 miette = { version = "7.2.0" }
 pest = { version = "2.7.10", optional = true }
 pest_derive = { version = "2.7.10", features = ["grammar-extras"], optional = true }
@@ -21,10 +27,14 @@ thiserror.workspace = true
 tracing-subscriber.workspace = true
 sqlsonnet-macros.workspace = true
 serde_path_to_error = "0.1.16"
+num-traits = { version = "0.2.19", optional = true }
 
 [features]
+default = ["jrsonnet-96"]
 fancy = ["miette/fancy", "miette/syntect-highlighter"]
 from-sql = ["dep:pest", "dep:pest_derive"]
+jrsonnet-95 = ["dep:jrsonnet-parser-95", "dep:jrsonnet-evaluator-95", "dep:jrsonnet-stdlib-95", "dep:num-traits", "sqlsonnet-macros/jrsonnet-95"]
+jrsonnet-96 = ["dep:jrsonnet-parser-96", "dep:jrsonnet-evaluator-96", "dep:jrsonnet-stdlib-96", "sqlsonnet-macros/jrsonnet-96"]
 
 [dev-dependencies]
 anyhow.workspace = true

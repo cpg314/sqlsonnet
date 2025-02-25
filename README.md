@@ -335,6 +335,13 @@ $ cargo make docker-compose
 $ cargo nextest run --workspace -r
 ```
 
+### `jrsonnet` version
+
+Via the feature flags `jrsonnet-95` and `jrsonnet-96` (default), the crate supports both:
+
+- the latest published version of `jrsonnet` on crates.io, 0.5.0-pre95
+- the [soon-to-be-released](https://github.com/CertainLach/jrsonnet/issues/70) 0.5.0-pre96 version.
+
 ## TODO
 
 - Proxy:

@@ -19,6 +19,7 @@ pub mod queries;
 mod to_sql;
 pub use jsonnet::Jsonnet;
 pub use queries::{Queries, Query};
+mod jrsonnet;
 
 pub use sqlsonnet_macros::{sqlsonnet_lit, sqlsonnet_query};
 

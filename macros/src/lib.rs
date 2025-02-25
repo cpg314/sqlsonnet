@@ -1,4 +1,8 @@
 extern crate proc_macro;
+#[cfg(feature = "jrsonnet-95")]
+use jrsonnet_parser_95 as jrsonnet_parser;
+#[cfg(feature = "jrsonnet-96")]
+use jrsonnet_parser_96 as jrsonnet_parser;
 use proc_macro::TokenStream;
 use quote::quote;
 
@@ -13,14 +17,12 @@ fn crate_() -> proc_macro2::TokenStream {
     }
 }
 
-#[derive(Debug)]
 struct Input {
     sqlsonnet: String,
     variables: Vec<Variable>,
     resolver: syn::Expr,
 }
 
-#[derive(Debug)]
 struct Variable {
     name: syn::Ident,
     value: syn::Expr,

@@ -25,8 +25,8 @@ checks:
 
   - type: command
     name: clippy
-    command: cargo clippy --color always --release --workspace --no-deps --benches --tests --all-features -- -D warnings
-    fix_command: cargo clippy --color always --release --workspace --no-deps --benches --tests --all-features --fix --allow-dirty --allow-staged -- -D warnings
+    command: cargo clippy --color always --release --workspace --no-deps --benches --tests -- -D warnings
+    fix_command: cargo clippy --color always --release --workspace --no-deps --benches --tests --fix --allow-dirty --allow-staged -- -D warnings
 
   - type: command
     name: docker-compose

@@ -1,5 +1,5 @@
 [package]
-name = "clickhouse-proxy"
+name = "sqlsonnet-clickhouse-proxy"
 version.workspace = true
 edition = "2021"
 publish = false
@@ -10,7 +10,7 @@ path = "src/clickhouse_proxy.rs"
 doc = false
 
 [dependencies]
-clickhouse-client.workspace = true
+sqlsonnet-clickhouse-client.workspace = true
 sqlsonnet.workspace = true
 
 anyhow.workspace = true

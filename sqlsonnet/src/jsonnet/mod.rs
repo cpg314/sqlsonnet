@@ -7,11 +7,14 @@ pub use resolver::{FsResolver, ImportResolver};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-pub use jrsonnet_evaluator::{parser::SourcePath, trace::PathResolver, val::NumValue, Val};
+pub use jrsonnet_evaluator::{parser::SourcePath, trace::PathResolver, Val};
 pub use jrsonnet_gcmodule;
 use jrsonnet_gcmodule::Trace;
+#[cfg(feature = "jrsonnet-95")]
+use num_traits::ToPrimitive;
 
 use crate::error::JsonnetError;
+use crate::jrsonnet::*;
 
 /// Filename for the embedded utilities library.
 pub const UTILS_FILENAME: &str = "sqlsonnet.libsonnet";
@@ -25,16 +28,6 @@ pub fn import_utils() -> String {
 /// Jsonnet import statement `local {variable} = import '{filename}';`
 pub fn import(variable: &str, filename: &str) -> String {
     format!("local {} = import '{}';", variable, filename)
-}
-
-fn evaluate_snippet(
-    filename: &str,
-    src: &str,
-    state: &jrsonnet_evaluator::State,
-) -> Result<jrsonnet_evaluator::Val, crate::error::JsonnetError> {
-    state
-        .evaluate_snippet(filename, src)
-        .map_err(|e| JsonnetError::from(src, e))
 }
 
 /// Options for jsonnet interpretation.
@@ -64,7 +57,12 @@ macro_rules! val {
     ($t: ty) => {
         impl Value for $t {
             fn try_into_val(self) -> Result<Val, crate::Error> {
-                Ok(Val::Num(NumValue::try_from(self)?))
+                #[cfg(feature = "jrsonnet-95")]
+                return Ok(Val::Num(
+                    ToPrimitive::to_f64(&self).ok_or(crate::Error::InvalidValue)?,
+                ));
+                #[cfg(feature = "jrsonnet-96")]
+                return Ok(Val::Num(jrsonnet_evaluator::val::NumValue::try_from(self)?));
             }
         }
     };
@@ -73,7 +71,12 @@ macro_rules! val_infallible {
     ($t: ty) => {
         impl Value for $t {
             fn try_into_val(self) -> Result<Val, crate::Error> {
-                Ok(Val::Num(NumValue::try_from(self).unwrap()))
+                #[cfg(feature = "jrsonnet-95")]
+                return Ok(Val::Num(ToPrimitive::to_f64(&self).unwrap()));
+                #[cfg(feature = "jrsonnet-96")]
+                return Ok(Val::Num(
+                    jrsonnet_evaluator::val::NumValue::try_from(self).unwrap(),
+                ));
             }
         }
     };
@@ -102,11 +105,26 @@ impl<R: ImportResolver> Options<R> {
     }
 }
 
-/// Evaluate Jsonnet into JSON
-pub fn evaluate<R: ImportResolver>(
-    jsonnet: &str,
-    mut options: Options<R>,
-) -> Result<String, crate::error::JsonnetError> {
+#[cfg(feature = "jrsonnet-95")]
+fn get_state<R: ImportResolver>(mut options: Options<R>) -> jrsonnet_evaluator::State {
+    let state = jrsonnet_evaluator::State::default();
+    state.set_import_resolver(options.resolver.to_resolver());
+
+    let context =
+        jrsonnet_stdlib::ContextInitializer::new(state.clone(), PathResolver::new_cwd_fallback());
+    // Make sure AGENT_VAR is always set as it is not possible to know if an extVar is defined at runtime
+    options.ext_vars.entry(AGENT_VAR.into()).or_default();
+    // Add variables
+    for (k, v) in options.ext_vars {
+        context.add_ext_var(k.into(), v);
+    }
+
+    state.set_context_initializer(context);
+
+    state
+}
+#[cfg(feature = "jrsonnet-96")]
+fn get_state<R: ImportResolver>(mut options: Options<R>) -> jrsonnet_evaluator::State {
     let mut state = jrsonnet_evaluator::StateBuilder::default();
     state.import_resolver(options.resolver.to_resolver());
 
@@ -120,9 +138,19 @@ pub fn evaluate<R: ImportResolver>(
 
     state.context_initializer(context);
 
-    let state = state.build();
+    state.build()
+}
 
-    let val = evaluate_snippet("input.jsonnet", jsonnet, &state)?;
+/// Evaluate Jsonnet into JSON
+pub fn evaluate<R: ImportResolver>(
+    jsonnet: &str,
+    options: Options<R>,
+) -> Result<String, crate::error::JsonnetError> {
+    let state = get_state(options);
+
+    let val = state
+        .evaluate_snippet("input.jsonnet", jsonnet)
+        .map_err(|e| JsonnetError::from(jsonnet, e))?;
     let format = Box::new(jrsonnet_evaluator::manifest::JsonFormat::cli(3));
     val.manifest(format)
         .map_err(|e| JsonnetError::from(jsonnet, e))

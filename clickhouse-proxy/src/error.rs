@@ -10,7 +10,7 @@ pub enum Error {
     #[error("Sqlsonnet error: {0}")]
     SqlSonnet(#[from] sqlsonnet::Error),
     #[error("Clickhouse error: {0}")]
-    Clickhouse(#[from] clickhouse_client::Error),
+    Clickhouse(#[from] sqlsonnet_clickhouse_client::Error),
     #[error("Received unexpected response from Clickhouse: {0}")]
     ClickhousePing(String),
     #[error("Cache error: {0}")]

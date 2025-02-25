@@ -1,6 +1,8 @@
 use itertools::Itertools;
 use miette::Diagnostic;
 
+use crate::jrsonnet::*;
+
 /// Errors
 #[derive(thiserror::Error, Diagnostic, Debug)]
 pub enum Error {
@@ -13,6 +15,10 @@ pub enum Error {
     #[error(transparent)]
     #[diagnostic(transparent)]
     SqlParse(#[from] SQLParseError),
+    #[cfg(feature = "jrsonnet-95")]
+    #[error("Invalid jsonnet value (must cast to finite f64)")]
+    InvalidValue,
+    #[cfg(feature = "jrsonnet-96")]
     #[error("Invalid jsonnet value (must cast to finite f64)")]
     InvalidValue(#[from] jrsonnet_evaluator::val::ConvertNumValueError),
 }

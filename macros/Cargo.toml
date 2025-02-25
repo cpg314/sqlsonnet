@@ -3,12 +3,19 @@ name = "sqlsonnet-macros"
 version.workspace = true
 license.workspace = true
 edition = "2021"
+description = "Proc macros for sqlsonnet"
 
 [lib]
 proc-macro = true
 
 [dependencies]
 quote = "1.0.36"
-jrsonnet-parser.workspace = true
+jrsonnet-parser-96 = { workspace = true, optional = true }
+jrsonnet-parser-95 = { workspace = true, optional = true }
 syn = "2.0.66"
 proc-macro2 = "1.0.85"
+
+[features]
+default = []
+jrsonnet-95 = ["dep:jrsonnet-parser-95"]
+jrsonnet-96 = ["dep:jrsonnet-parser-96"]

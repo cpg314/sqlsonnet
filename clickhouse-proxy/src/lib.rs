@@ -14,11 +14,12 @@ use std::sync::Arc;
 use anyhow::Context;
 use axum::response::IntoResponse;
 use clap::Parser;
+use clickhouse_client::ClickhouseQuery;
 use itertools::Itertools;
 use metrics_exporter_prometheus::PrometheusBuilder;
+use sqlsonnet_clickhouse_client as clickhouse_client;
 use tracing::*;
 
-use clickhouse_client::ClickhouseQuery;
 use sqlsonnet::{Queries, Query};
 
 lazy_static::lazy_static! {

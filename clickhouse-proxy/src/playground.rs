@@ -244,7 +244,7 @@ mod websocket {
                     params: BTreeMap::from([("default_format".into(), FORMAT.into())]),
                     // We can't ask for compression here, because the client does not have
                     // decompression enabled.
-                    compression: clickhouse_client::Compression::None,
+                    compression: sqlsonnet_clickhouse_client::Compression::None,
                     ..Default::default()
                 })
                 .await?;

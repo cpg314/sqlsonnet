@@ -2,11 +2,14 @@
 version = "0.1.14"
 edition = "2021"
 license = "MIT OR Apache-2.0"
+description = "Express SQL queries with a simple Jsonnet representation, which can be easily templated using the Jsonnet configuration language. "
+categories = ["database", "compilers"]
+repository = "https://github.com/cpg314/sqlsonnet"
 
 [workspace.dependencies]
 sqlsonnet = { version = "0.1.14", path = "sqlsonnet" }
 sqlsonnet-macros = { version = "0.1.14", path = "macros" }
-clickhouse-client = { version = "0.1.14", path = "clickhouse-client" }
+sqlsonnet-clickhouse-client = { version = "0.1.14", path = "clickhouse-client" }
 
 anyhow = "1.0.86"
 clap = { version = "4.5.7", features = ["derive", "env"] }
@@ -21,8 +24,8 @@ lazy_static = "1.5.0"
 tokio = { version = "1.38.0", features = ["full"] }
 reqwest = { version = "0.12.4", features = ["rustls-tls", "json", "gzip", "zstd", "stream"], default-features = false }
 http = "1.0.0"
-jrsonnet-parser = { version = "0.5.0-pre96", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-parser", tag = "v0.5.0-patch", features = ["exp-null-coaelse"] }
-
+jrsonnet-parser-95 = { package = "jrsonnet-parser", version = "0.5.0-pre95", features = ["exp-null-coaelse"] }
+jrsonnet-parser-96 = { version = "0.5.0-pre96", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-parser", tag = "v0.5.0-patch", features = ["exp-null-coaelse"] }
 
 [workspace]
 members = ["sqlsonnet", "clickhouse-proxy", "sqlsonnet-cli", "clickhouse-client", "bindings/wasm", "macros"]

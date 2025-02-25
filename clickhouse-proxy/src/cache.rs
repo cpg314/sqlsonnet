@@ -166,7 +166,7 @@ impl Response {
             Ok::<_, CacheError>(())
         });
         let body = axum::body::Body::from_stream(body.map(move |buf| {
-            let buf = buf.map_err(clickhouse_client::Error::from)?;
+            let buf = buf.map_err(sqlsonnet_clickhouse_client::Error::from)?;
             tx.send(buf.clone()).map_err(|_| CacheError::SendBuf)?;
             Ok::<_, Error>(buf)
         }));

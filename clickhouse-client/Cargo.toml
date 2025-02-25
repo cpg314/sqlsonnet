@@ -1,6 +1,9 @@
 [package]
-name = "clickhouse-client"
+name = "sqlsonnet-clickhouse-client"
 version.workspace = true
+repository.workspace = true
+license.workspace = true
+description = "Simple Clickhouse HTTP client"
 edition = "2021"
 
 

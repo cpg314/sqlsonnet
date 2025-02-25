@@ -1,7 +1,7 @@
 use clap::Parser;
 use tracing::*;
 
-use clickhouse_proxy::{main_impl, Flags};
+use sqlsonnet_clickhouse_proxy::{main_impl, Flags};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
