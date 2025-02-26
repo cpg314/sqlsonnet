@@ -11,11 +11,13 @@ readme.workspace = true
 itertools.workspace = true
 jrsonnet-gcmodule = "0.3.6"
 jrsonnet-evaluator-95 = { package = "jrsonnet-evaluator", version = "0.5.0-pre95", features = ["exp-null-coaelse"], optional = true}
-jrsonnet-evaluator-96 = { version = "0.5.0-pre96", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-evaluator", tag = "v0.5.0-patch", features = ["exp-null-coaelse"], optional = true }
+# The version at 95 is not a typo, but to allow the package to be built for crates.io
+jrsonnet-evaluator-96 = { version = "0.5.0-pre95", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-evaluator", tag = "v0.5.0-patch", features = ["exp-null-coaelse"], optional = true }
 jrsonnet-parser-95 = { workspace = true, optional = true }
 jrsonnet-parser-96 = { workspace = true, optional = true }
 jrsonnet-stdlib-95 = { package = "jrsonnet-stdlib", version = "0.5.0-pre95", features = ["exp-null-coaelse"], optional = true}
-jrsonnet-stdlib-96 = { version = "0.5.0-pre96", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-stdlib", tag = "v0.5.0-patch", features = ["exp-null-coaelse"], optional = true }
+# The version at 95 is not a typo, but to allow the package to be built for crates.io
+jrsonnet-stdlib-96 = { version = "0.5.0-pre95", git = "https://github.com/cpg314/jrsonnet.git", package = "jrsonnet-stdlib", tag = "v0.5.0-patch", features = ["exp-null-coaelse"], optional = true }
 miette = { version = "7.2.0" }
 pest = { version = "2.7.10", optional = true }
 pest_derive = { version = "2.7.10", features = ["grammar-extras"], optional = true }
