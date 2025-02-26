@@ -167,10 +167,9 @@ async fn process_one(
         )
         .map_err(sqlsonnet::Error::from)?;
 
-        let queries = Queries::from_json(&queries_json).map_err(|e| {
+        let queries = Queries::from_json(&queries_json).inspect_err(|_| {
             // TODO: Print on stderr
             highlight(&queries_json, Language::Json, args).unwrap();
-            e
         })?;
 
         let has_df = |l| display_format.iter().any(|l2| l2 == &l);
